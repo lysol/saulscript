@@ -20,6 +20,8 @@ class Lexer(object):
         self.current_token = None
         self.tokens = []
         self.in_escape = False
+        self.in_line_comment = False
+        self.in_block_comment = False
 
     @property
     def next_char(self):
@@ -64,9 +66,21 @@ class Lexer(object):
 
             if self.current_token is None:
                 # No current state
-                if char in "'\"":
+                if char == '\n' and not self.in_block_comment:
+                    self.in_line_comment = False
+                    self.tokens.append(tokens.LineTerminatorToken())
+                elif char == '*' and self.next_char == '/':
+                    if not self.in_block_comment:
+                        raise ParseError(
+                            "Ending block comment token unexpected.")
+                    self.in_block_comment = False
+                    self.skip_ahead()
+                elif self.in_line_comment or self.in_block_comment:
+                    # ignore whatever is here
+                    continue
+                elif char in "'\"":
                     self.current_token = tokens.StringLiteralToken(char)
-                elif char in string.digits or char == '.' or char == '-' and \
+                elif char in string.digits or char == '.' and \
                         self.next_char in string.digits:
                     self.current_token = tokens.NumberLiteralToken(char)
                 elif char in string.letters:
@@ -94,6 +108,14 @@ class Lexer(object):
                     self.save_token(tokens.AdditionOperatorToken())
                 elif char == '-':
                     self.save_token(tokens.SubtractionOperatorToken())
+                elif char == '/' and self.next_char == '/':
+                    # comment!
+                    self.in_line_comment = True
+                    self.skip_ahead()
+                elif char == '/' and self.next_char == '*':
+                    print 'come on'
+                    self.in_block_comment = True
+                    self.skip_ahead()
                 elif char == '/':
                     self.save_token(tokens.DivisionOperatorToken())
                 elif char == '*':
@@ -105,15 +127,19 @@ class Lexer(object):
                 elif char == '\\' and self.next_char == '\n':
                     # escaped line terminator
                     self.skip_ahead()
-                elif char == '\n':
-                    self.tokens.append(tokens.LineTerminatorToken())
+
                 elif char == '(':
                     self.save_token(tokens.LeftParenToken())
                 elif char == ')':
                     self.save_token(tokens.RightParenToken())
+                elif char == '{':
+                    self.save_token(tokens.LeftCurlyBraceToken())
+                elif char == '}':
+                    self.save_token(tokens.RightCurlyBraceToken())
+                elif char == ':':
+                    self.save_token(tokens.ColonToken())
                 elif char in string.whitespace:
                     pass
-
             elif isinstance(self.current_token, tokens.StringLiteralToken):
                 if self.in_escape:
                     self.current_token.body += char

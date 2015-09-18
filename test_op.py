@@ -25,12 +25,15 @@ class Operator(object):
         '<=': 6,
         '==': 7,
         ')': 9,
-        '=': 14
+        '=': 14,
+        'u+': 2,
+        'u-': 2
     }
 
     def __init__(self, operator):
         self.prec = self.ops[operator]
         self.op = operator
+        self.unary = operator[0] == 'u'
 
     def __str__(self):
         return self.__repr__
@@ -38,7 +41,7 @@ class Operator(object):
     def __repr__(self):
         return self.op
 
-expression = '1 + 20 / ( 10 + 5 ) * 10 + 3'.split()
+expression = '5 + - ( 10 * - 5 )'.split()
 
 op_stack = []
 output = []
@@ -47,6 +50,8 @@ output = []
 def show_info():
     print "operator stack ", op_stack
     print "output ", repr(output)
+
+prev_token = None
 
 while True:
     try:
@@ -60,6 +65,9 @@ while True:
         show_info()
     elif token in Operator.ops:
         token1, val1 = token, Operator.ops[token]
+        if token1 in ('-', '+') and prev_token in Operator.ops or \
+                prev_token is None:
+            token1, val1 = 'u' + token1, Operator.ops['u' + token1]
         print 'Considering operator %s' % token1
         while len(op_stack) > 0:
             print 'Pop ops from stack to output'
@@ -86,14 +94,16 @@ while True:
                         show_info()
                         break
             else:
-                print "Left operator is equal or larger than right. Break from poppin"
+                print "Left operator is equal or larger than right." \
+                    "Break from poppin"
                 break
         if token1 != ')':
             print "Pushing current token to operator stack"
-            op_stack.append(token)
+            op_stack.append(token1)
             show_info()
         else:
             print 'Ignoring )'
+    prev_token = token
 print "Draining operator stack"
 while len(op_stack) > 0:
     operator = Operator(op_stack.pop())
@@ -113,8 +123,13 @@ while True:
         # number
         calc_stack.append(item)
     else:
-        right, left = calc_stack.pop(), calc_stack.pop()
-        expr = '%.5f %s %.5f' % (left, item.op, right)
+        if item.unary:
+            # unary
+            target = calc_stack.pop()
+            expr = '%s %.5f' % (item.op[1], target)
+        else:
+            right, left = calc_stack.pop(), calc_stack.pop()
+            expr = '%.5f %s %.5f' % (left, item.op, right)
         print 'Evaluating %s' % expr
         calc_stack.append(eval(expr))
     print "Calc Stack: ", calc_stack

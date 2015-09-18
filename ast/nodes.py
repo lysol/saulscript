@@ -101,7 +101,10 @@ class UnaryOpNode(Node):
 
     def reduce(self, context):
         logging.debug("%s %s", self.__class__, type(self.target))
-        return self.operation(self.target.reduce(context))
+        return self.operation(self.target.reduce(context), context)
+
+    def __repr__(self):
+        return "<unary-op %s>" % repr(self.target)
 
 
 class BinaryOpNode(Node):
@@ -122,7 +125,7 @@ class BinaryOpNode(Node):
             "Please define the operation of this operator")
 
     def __repr__(self):
-        return "<%s %s %s>" % (repr(self.left), 'op', repr(self.right))
+        return "<%s %s %s>" % (repr(self.left), 'binary-op', repr(self.right))
 
 
 class AdditionNode(BinaryOpNode):
@@ -192,6 +195,12 @@ class LessThanEqualToNode(BinaryOpNode):
 
     def operation(self, left, right, context):
         return operator.le(left, right)
+
+
+class NegationNode(UnaryOpNode):
+
+    def operation(self, target, context):
+        return operator.mul(-1, target)
 
 
 class NumberNode(LiteralNode):

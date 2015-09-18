@@ -61,6 +61,7 @@ class AST(object):
     def handle_operator_expression(self):
         output = []
         op_stack = []
+        prev_token = None
 
         while True:
             logging.debug("Output stack: %s", output)
@@ -72,6 +73,11 @@ class AST(object):
             if isinstance(token, lexer.tokens.LineTerminatorToken):
                 logging.debug('break it out')
                 break
+            if (prev_token is None or
+                isinstance(prev_token, lexer.tokens.OperatorToken)) and \
+                    isinstance(token, lexer.tokens.SubtractionOperatorToken):
+                # unary -
+                token = lexer.tokens.NegationOperatorToken()
             if not isinstance(token, lexer.tokens.OperatorToken) and not \
                     isinstance(token, lexer.tokens.LiteralToken) and not \
                     isinstance(token, lexer.tokens.IdentifierToken):
@@ -83,11 +89,14 @@ class AST(object):
             else:
                 while len(op_stack) > 0:
                     token2 = op_stack[-1]
+
                     is_left_associative = \
                         token.associativity == lexer.tokens.OperatorToken.LEFT
                     is_right_associative = \
                         token.associativity == lexer.tokens.OperatorToken.RIGHT
-
+                    logging.debug("Is Left Associative: %s\t"
+                                  "Is Right Associative: %s",
+                                  is_left_associative, is_right_associative)
                     if (is_left_associative and token.precedence >= token2.precedence) or \
                             (is_right_associative and
                                 token.precedence > token2.precedence):
@@ -117,6 +126,9 @@ class AST(object):
                     # push current operator to stack
                     op_stack.append(token)
                 # ignore right paren
+            # hold onto this for the next run in case we need to
+            # check for unary operators
+            prev_token = token
         # drain the operator stack
         while len(op_stack) > 0:
             operator = op_stack.pop()
@@ -137,8 +149,16 @@ class AST(object):
                 tree_stack.append(self.handle_token(token))
             else:
                 logging.debug("%s", tree_stack)
-                right, left = tree_stack.pop(), tree_stack.pop()
-                tree_stack.append(token.get_node(left, right))
+                logging.debug("Determining if %s is unary or binary", token)
+                if isinstance(token, lexer.tokens.BinaryOperatorToken):
+                    logging.debug("%s is binary", token)
+                    right, left = tree_stack.pop(), tree_stack.pop()
+                    tree_stack.append(token.get_node(left, right))
+                elif isinstance(token, lexer.tokens.UnaryOperatorToken):
+                    logging.debug("%s is unary", token)
+                    target = tree_stack.pop()
+                    tree_stack.append(token.get_node(target))
+        logging.debug("%s" % tree_stack)
         assert len(tree_stack) == 1
 
         logging.debug('The final tree leaf: %s', tree_stack[0])

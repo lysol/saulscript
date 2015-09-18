@@ -1,4 +1,4 @@
-what = 1 + 20 / (10 + 5) * 10 + 3
+/*what = 1 + 20 / (10 + 5) * 10 + 3
 doit = 100
 tacotruck = 0
 if doit == 100
@@ -6,3 +6,7 @@ if doit == 100
 end if
 tacos = 10
 bongs = 2 + 2 ** 2 / 4
+// test */
+tacos = 10 + -21
+burrito = tacos * -10
+empanada = -(tacos / 5)
