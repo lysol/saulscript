@@ -1,5 +1,5 @@
 import string
-from tokens import *
+import tokens
 
 
 class EndOfFileException(Exception):
@@ -65,56 +65,56 @@ class Lexer(object):
             if self.current_token is None:
                 # No current state
                 if char in "'\"":
-                    self.current_token = StringLiteralToken(char)
+                    self.current_token = tokens.StringLiteralToken(char)
                 elif char in string.digits or char == '.' or char == '-' and \
                         self.next_char in string.digits:
-                    self.current_token = NumberLiteralToken(char)
+                    self.current_token = tokens.NumberLiteralToken(char)
                 elif char in string.letters:
-                    self.current_token = IdentifierToken(char)
+                    self.current_token = tokens.IdentifierToken(char)
                 elif char == '>':
                     if self.next_char == '=':
-                        self.save_token(GreaterThanEqualOperatorToken())
+                        self.save_token(tokens.GreaterThanEqualOperatorToken())
                         self.skip_ahead()
                     else:
-                        self.save_token(GreaterThanOperatorToken())
+                        self.save_token(tokens.GreaterThanOperatorToken())
                 elif char == '<':
                     if self.next_char == '=':
-                        self.save_token(LessThanEqualOperatorToken())
+                        self.save_token(tokens.LessThanEqualOperatorToken())
                         self.skip_ahead()
                     else:
-                        self.save_token(LessThanOperatorToken())
+                        self.save_token(tokens.LessThanOperatorToken())
                 elif char == '=':
                     if self.next_char == '=':
                         # comparison, not assignment
-                        self.save_token(ComparisonOperatorToken())
+                        self.save_token(tokens.ComparisonOperatorToken())
                         self.skip_ahead()
                     else:
-                        self.save_token(AssignmentOperatorToken())
+                        self.save_token(tokens.AssignmentOperatorToken())
                 elif char == '+':
-                    self.save_token(AdditionOperatorToken())
+                    self.save_token(tokens.AdditionOperatorToken())
                 elif char == '-':
-                    self.save_token(SubtractionOperatorToken())
+                    self.save_token(tokens.SubtractionOperatorToken())
                 elif char == '/':
-                    self.save_token(DivisionOperatorToken())
+                    self.save_token(tokens.DivisionOperatorToken())
                 elif char == '*':
                     if self.next_char == '*':
-                        self.save_token(ExponentOperatorToken())
+                        self.save_token(tokens.ExponentOperatorToken())
                         self.skip_ahead()
                     else:
-                        self.save_token(MultiplicationOperatorToken())
+                        self.save_token(tokens.MultiplicationOperatorToken())
                 elif char == '\\' and self.next_char == '\n':
                     # escaped line terminator
                     self.skip_ahead()
                 elif char == '\n':
-                    self.tokens.append(LineTerminatorToken())
+                    self.tokens.append(tokens.LineTerminatorToken())
                 elif char == '(':
-                    self.save_token(LeftParenToken())
+                    self.save_token(tokens.LeftParenToken())
                 elif char == ')':
-                    self.save_token(RightParenToken())
+                    self.save_token(tokens.RightParenToken())
                 elif char in string.whitespace:
                     pass
 
-            elif isinstance(self.current_token, StringLiteralToken):
+            elif isinstance(self.current_token, tokens.StringLiteralToken):
                 if self.in_escape:
                     self.current_token.body += char
                     self.in_escape = False
@@ -125,7 +125,7 @@ class Lexer(object):
                 else:
                     self.push_char(char)
 
-            elif isinstance(self.current_token, NumberLiteralToken):
+            elif isinstance(self.current_token, tokens.NumberLiteralToken):
                 if char in string.digits or char == '.':
                     if '.' in self.current_token.body:
                         raise ParseError("Second . found in number")
@@ -134,13 +134,13 @@ class Lexer(object):
                     self.push_token()
                     self.back_up()
 
-            elif isinstance(self.current_token, IdentifierToken):
+            elif isinstance(self.current_token, tokens.IdentifierToken):
                 if char in string.digits or char in string.letters:
                     self.push_char(char)
                 elif char == '.':
                     # object attribute resolution operator
                     self.push_token()
-                    self.save_token(DotNotationOperatorToken())
+                    self.save_token(tokens.DotNotationOperatorToken())
                 else:
                     self.push_token()
                     self.back_up()

@@ -1,9 +1,7 @@
 what = 1 + 20 / (10 + 5) * 10 + 3
-if what == 1
+doit = 100
+tacotruck = 0
+if doit == 100
   tacotruck = 2
-  tacotruck = tacotruck**2
-  if 10 / (2 + 5) == 5
-    tacotruck = 20
-  end if
 end if
-test.tacotruck = 1
+tacos = 10

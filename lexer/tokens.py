@@ -1,3 +1,6 @@
+import ast
+import ast.nodes
+
 class Token(object):
 
     def append(self, txt):
@@ -23,6 +26,9 @@ class LineTerminatorToken(Token):
 
 
 class BinaryOperatorToken(Token):
+
+    def get_node(self):
+        raise NotImplementedError("Please define a type of node for this token to return")
 
     def __init__(self, precedence, body):
         self.precedence = precedence
@@ -57,11 +63,17 @@ class StringLiteralToken(LiteralToken):
 
 class AssignmentOperatorToken(BinaryOperatorToken):
 
+    def get_node(self, left, right):
+        return ast.nodes.AssignmentNode(left, right)
+
     def __init__(self):
         super(AssignmentOperatorToken, self).__init__(14, '=')
 
 
 class ComparisonOperatorToken(BinaryOperatorToken):
+
+    def get_node(self, left, right):
+        return ast.nodes.ComparisonNode(left, right)
 
     def __init__(self):
         super(ComparisonOperatorToken, self).__init__(7, '==')
@@ -69,11 +81,17 @@ class ComparisonOperatorToken(BinaryOperatorToken):
 
 class AdditionOperatorToken(BinaryOperatorToken):
 
+    def get_node(self, left, right):
+        return ast.nodes.AdditionNode(left, right)
+
     def __init__(self):
         super(AdditionOperatorToken, self).__init__(4, '+')
 
 
 class SubtractionOperatorToken(BinaryOperatorToken):
+
+    def get_node(self, left, right):
+        return ast.nodes.SubtractionNode(left, right)
 
     def __init__(self):
         super(SubtractionOperatorToken, self).__init__(4, '-')
@@ -81,11 +99,17 @@ class SubtractionOperatorToken(BinaryOperatorToken):
 
 class DivisionOperatorToken(BinaryOperatorToken):
 
+    def get_node(self, left, right):
+        return ast.nodes.DivisionNode(left, right)
+
     def __init__(self):
         super(DivisionOperatorToken, self).__init__(3, '/')
 
 
 class MultiplicationOperatorToken(BinaryOperatorToken):
+
+    def get_node(self, left, right):
+        return ast.nodes.MultiplicationNode(left, right)
 
     def __init__(self):
         super(MultiplicationOperatorToken, self).__init__(3, '*')
@@ -93,11 +117,17 @@ class MultiplicationOperatorToken(BinaryOperatorToken):
 
 class ExponentOperatorToken(BinaryOperatorToken):
 
+    def get_node(self, left, right):
+        return ast.nodes.ExponentNode(left, right)
+
     def __init__(self):
         super(ExponentOperatorToken, self).__init__(2, '**')
 
 
 class GreaterThanOperatorToken(BinaryOperatorToken):
+
+    def get_node(self, left, right):
+        return ast.nodes.GreaterThanNode(left, right)
 
     def __init__(self):
         super(GreaterThanOperatorToken, self).__init__(6, '>')
@@ -105,11 +135,17 @@ class GreaterThanOperatorToken(BinaryOperatorToken):
 
 class LessThanOperatorToken(BinaryOperatorToken):
 
+    def get_node(self, left, right):
+        return ast.nodes.LessThanNode(left, right)
+
     def __init__(self):
         super(LessThanOperatorToken, self).__init__(6, '<')
 
 
 class GreaterThanEqualOperatorToken(BinaryOperatorToken):
+
+    def get_node(self, left, right):
+        return ast.nodes.GreaterThanEqualNode(left, right)
 
     def __init__(self):
         super(GreaterThanEqualOperatorToken, self).__init__(6, '>=')
@@ -117,11 +153,17 @@ class GreaterThanEqualOperatorToken(BinaryOperatorToken):
 
 class LessThanEqualOperatorToken(BinaryOperatorToken):
 
+    def get_node(self, left, right):
+        return ast.nodes.LessThanEqualNode(left, right)
+
     def __init__(self):
         super(LessThanEqualOperatorToken, self).__init__(6, '<=')
 
 
 class DotNotationOperatorToken(BinaryOperatorToken):
+
+    def get_node(self, left, right):
+        return ast.nodes.DotNotationNode(left, right)
 
     def __init__(self):
         super(DotNotationOperatorToken, self).__init__(1, '.')
@@ -129,11 +171,17 @@ class DotNotationOperatorToken(BinaryOperatorToken):
 
 class LeftParenToken(BinaryOperatorToken):
 
+    def get_node(self, left, right):
+        assert False
+
     def __init__(self):
         super(LeftParenToken, self).__init__(1, '(')
 
 
 class RightParenToken(BinaryOperatorToken):
+
+    def get_node(self, left, right):
+        assert False
 
     def __init__(self):
         super(RightParenToken, self).__init__(9, ')')

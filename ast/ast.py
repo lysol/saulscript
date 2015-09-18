@@ -1,6 +1,6 @@
-from nodes import *
-from lexer import *
-
+import nodes
+import lexer
+import lexer.tokens
 
 class ParseError(Exception):
 
@@ -15,6 +15,11 @@ class OutOfTokens(Exception):
 
 
 class AST(object):
+
+    def execute(self, context):
+        for expression in self.tree:
+            expression.reduce(context)
+        return context
 
     @property
     def next_token(self):
@@ -31,7 +36,7 @@ class AST(object):
 
     def __init__(self, tokens):
         self.tokens = tokens
-        self.tree = Branch([])
+        self.tree = nodes.Branch([])
 
     def is_identifier(self, token, body):
         return isinstance(token, Identifier) and token.body == body
@@ -62,22 +67,22 @@ class AST(object):
                 token = self.shift_token()
             except IndexError:
                 break
-            if isinstance(token, LineTerminatorToken):
+            if isinstance(token, lexer.tokens.LineTerminatorToken):
                 print 'break it out'
                 break
-            if not isinstance(token, BinaryOperatorToken) and not \
-                    isinstance(token, LiteralToken) and not \
-                    isinstance(token, IdentifierToken):
+            if not isinstance(token, lexer.tokens.BinaryOperatorToken) and not \
+                    isinstance(token, lexer.tokens.LiteralToken) and not \
+                    isinstance(token, lexer.tokens.IdentifierToken):
                 raise ParseError(
                     "Expected an operator, literal, or identifier. (Got %s: %s)" % (token.__class__, token.body))
-            if not isinstance(token, BinaryOperatorToken):
+            if not isinstance(token, lexer.tokens.BinaryOperatorToken):
                 output.append(token)
             else:
                 while len(op_stack) > 0:
                     token2 = op_stack[-1]
                     if token.precedence >= token2.precedence:
-                        if not isinstance(token, RightParenToken):
-                            if not isinstance(token2, LeftParenToken):
+                        if not isinstance(token, lexer.tokens.RightParenToken):
+                            if not isinstance(token2, lexer.tokens.LeftParenToken):
                                 op_token = op_stack.pop()
                                 print "Popping %s off stack" % op_token.body
                                 output.append(op_token)
@@ -85,7 +90,7 @@ class AST(object):
                                 # break because we hit a left paren
                                 break
                         else:
-                            if not isinstance(token2, LeftParenToken):
+                            if not isinstance(token2, lexer.tokens.LeftParenToken):
                                 op_token = op_stack.pop()
                                 output.append(op_token)
                             else:
@@ -95,7 +100,7 @@ class AST(object):
                     else:
                         # left operator is equal or larger than right. breakin
                         break
-                if not isinstance(token, RightParenToken):
+                if not isinstance(token, lexer.tokens.RightParenToken):
                     # push current operator to stack
                     op_stack.append(token)
                 # ignore right paren
@@ -115,26 +120,26 @@ class AST(object):
                 token = output.pop(0)
             except IndexError:
                 break
-            if not isinstance(token, BinaryOperatorToken):
+            if not isinstance(token, lexer.tokens.BinaryOperatorToken):
                 tree_stack.append(self.handle_token(token))
             else:
                 print tree_stack
                 right, left = tree_stack.pop(), tree_stack.pop()
-                tree_stack.append(BinaryOpNode(token.body, left, right))
+                tree_stack.append(token.get_node(left, right))
         assert len(tree_stack) == 1
 
         print 'The final tree leaf: %s' % tree_stack[0]
         return tree_stack.pop()  # -----------===============#################*
 
     def handle_token(self, token):
-        if isinstance(token, IdentifierToken):
+        if isinstance(token, lexer.tokens.IdentifierToken):
             # variable?
             # in the future, a function
-            return VariableNode(token.body)
-        elif isinstance(token, NumberLiteralToken):
-            return NumberLiteralNode(token.body)
-        elif isinstance(token, StringLiteralToken):
-            return StringLiteralNode(token.body)
+            return nodes.VariableNode(token.body)
+        elif isinstance(token, lexer.tokens.NumberLiteralToken):
+            return nodes.NumberNode(token.body)
+        elif isinstance(token, lexer.tokens.StringLiteralToken):
+            return nodes.StringNode(token.body)
         assert False
 
     def handle_expression(self):
@@ -145,15 +150,15 @@ class AST(object):
                 print "Consider ", token.__class__
             except IndexError:
                 raise OutOfTokens('During handle expression')
-            if isinstance(token, IdentifierToken):
+            if isinstance(token, lexer.tokens.IdentifierToken):
                 if self.handler_exists(token):
                     return self.handle_identifier()
                 else:
                     return self.handle_binary_operator_expression()
-            elif isinstance(token, LineTerminatorToken):
+            elif isinstance(token, lexer.tokens.LineTerminatorToken):
                 print "Delete this infernal line terminator"
                 self.shift_token()
-                return NopNode()
+                return nodes.NopNode()
 
     def handler_exists(self, token):
         method_name = 'handle_identifier_' + token.body
@@ -168,25 +173,34 @@ class AST(object):
     def handle_identifier_if(self, token):
         print "Handling IF"
         condition = self.handle_binary_operator_expression()
-        then_branch = Branch([])
-        else_branch = Branch([])
-        while not isinstance(self.next_token, IdentifierToken) or \
+        then_branch = nodes.Branch([])
+        else_branch = nodes.Branch([])
+        while not isinstance(self.next_token, lexer.tokens.IdentifierToken) or \
                 self.next_token.body not in ['else', 'end']:
             print "Checking next expression as part of THEN clause"
             then_branch.append(self.handle_expression())
 
-        if isinstance(self.next_token, IdentifierToken) and \
+        if isinstance(self.next_token, lexer.tokens.IdentifierToken) and \
                 self.next_token.body == 'else':
             self.shift_token()
-            while not isinstance(self.next_token, IdentifierToken) or \
+            while not isinstance(self.next_token, lexer.tokens.IdentifierToken) or \
                     self.tokens[0:2] != ['end', 'if']:
                 print "Checking next expression as part of ELSE clause"
                 else_branch.append(self.handle_expression())
         end_token = self.shift_token()
         if_token = self.shift_token()
         print "Then: %s, Else: %s, End If: %s %s" % (then_branch, else_branch, end_token.body, if_token.body)
-        assert isinstance(end_token, IdentifierToken) and \
+        assert isinstance(end_token, lexer.tokens.IdentifierToken) and \
             end_token.body == 'end'
-        assert isinstance(if_token, IdentifierToken) and if_token.body == 'if'
+        assert isinstance(if_token, lexer.tokens.IdentifierToken) and if_token.body == 'if'
 
-        return IfNode(condition, then_branch, else_branch)
+        return nodes.IfNode(condition, then_branch, else_branch)
+
+    def handle_identifier_true(self, token):
+        assert token.value.lower() == 'true'
+        return nodes.BooleanNode(True)
+
+    def handle_identifier_false(self, token):
+        assert token.value.lower() == 'false'
+        return nodes.BooleanNode(False)
+
