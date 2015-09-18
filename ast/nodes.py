@@ -1,8 +1,11 @@
 from decimal import Decimal
 import operator
+import logging
+
 
 class ObjectResolutionError(Exception):
     pass
+
 
 class Node(object):
 
@@ -35,18 +38,6 @@ class LiteralNode(Node):
 
     def reduce(self, context):
         return self.value
-
-
-class VariableNode(Node):
-
-    def __init__(self, name):
-        self.name = name
-
-    def reduce(self, context):
-        if self.name in context:
-            return context[self.name]
-        else:
-            raise NameError("%s is not defined" % self.name)
 
 
 class Branch(list):
@@ -87,14 +78,30 @@ class IfNode(Node):
         self.else_branch.append(else_statement)
 
     def __repr__(self):
-        return '<If: %s Then: %s Else: %s>' % (self.condition, self.then_branch, self.else_branch)
+        return '<If: %s Then: %s Else: %s>' % \
+            (self.condition, self.then_branch, self.else_branch)
 
     def reduce(self, context):
         result = self.condition.reduce(context)
+        logging.debug("If result: %s", result)
         if result:
             return self.then_branch.execute(context)
         elif len(self.else_branch) > 0:
             return self.else_branch.execute(context)
+
+
+class UnaryOpNode(Node):
+
+    def __init__(self, target):
+        self.target = target
+
+    def operation(self, target):
+        raise NotImplementedError(
+            "Please define the operation of this operator")
+
+    def reduce(self, context):
+        logging.debug("%s %s", self.__class__, type(self.target))
+        return self.operation(self.target.reduce(context))
 
 
 class BinaryOpNode(Node):
@@ -104,11 +111,15 @@ class BinaryOpNode(Node):
         self.right = right
 
     def reduce(self, context):
-        print type(self.left), type(self.right)
-        return self.operation(self.left.reduce(context), self.right.reduce(context), context)
+        logging.debug("%s %s %s",
+                      self.__class__, type(self.left),
+                      type(self.right))
+        return self.operation(self.left.reduce(context),
+                              self.right.reduce(context), context)
 
     def operation(self, left, right):
-        raise NotImplementedError("Please define the operation of this operator")
+        raise NotImplementedError(
+            "Please define the operation of this operator")
 
     def __repr__(self):
         return "<%s %s %s>" % (repr(self.left), 'op', repr(self.right))
@@ -135,7 +146,7 @@ class MultiplicationNode(BinaryOpNode):
 class DivisionNode(BinaryOpNode):
 
     def operation(self, left, right, context):
-        print left, right
+        logging.debug("%s %s", left, right)
         return operator.div(left, right)
 
 
@@ -148,13 +159,14 @@ class ExponentNode(BinaryOpNode):
 class AssignmentNode(BinaryOpNode):
 
     def reduce(self, context):
-        print self.left, self.right
+        logging.debug("%s %s", self.left, self.right)
         context[self.left.name] = self.right.reduce(context)
 
 
 class ComparisonNode(BinaryOpNode):
 
     def operation(self, left, right, context):
+        logging.debug("Left: %s   Right: %s", repr(left), repr(right))
         return operator.eq(left, right)
 
 
@@ -198,6 +210,12 @@ class StringNode(LiteralNode):
 
 
 class VariableNode(LiteralNode):
+
+    def reduce(self, context):
+        if self.name in context:
+            return context[self.name]
+        else:
+            raise NameError("No variable named %s" % self.name)
 
     def __init__(self, name):
         self.name = name

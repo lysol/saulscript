@@ -5,3 +5,4 @@ if doit == 100
   tacotruck = 2
 end if
 tacos = 10
+bongs = 2 + 2 ** 2 / 4

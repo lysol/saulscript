@@ -1,6 +1,7 @@
 import ast
 import ast.nodes
 
+
 class Token(object):
 
     def append(self, txt):
@@ -25,14 +26,20 @@ class LineTerminatorToken(Token):
         super(LineTerminatorToken, self).__init__("\n")
 
 
-class BinaryOperatorToken(Token):
+class OperatorToken(Token):
+
+    LEFT = 0
+    RIGHT = 1
 
     def get_node(self):
-        raise NotImplementedError("Please define a type of node for this token to return")
+        raise NotImplementedError(
+            "Please define a type of node for this token to return")
 
-    def __init__(self, precedence, body):
+    def __init__(self, precedence, body, associativity=None):
         self.precedence = precedence
-        super(BinaryOperatorToken, self).__init__(body)
+        self.associativity = associativity \
+            if associativity is not None else self.LEFT
+        super(OperatorToken, self).__init__(body)
 
 
 class IdentifierToken(Token):
@@ -61,16 +68,17 @@ class StringLiteralToken(LiteralToken):
         return '"%s"' % (self.body.replace('"', '\\"'))
 
 
-class AssignmentOperatorToken(BinaryOperatorToken):
+class AssignmentOperatorToken(OperatorToken):
 
     def get_node(self, left, right):
         return ast.nodes.AssignmentNode(left, right)
 
     def __init__(self):
-        super(AssignmentOperatorToken, self).__init__(14, '=')
+        super(AssignmentOperatorToken, self).__init__(14, '=',
+                                                      OperatorToken.RIGHT)
 
 
-class ComparisonOperatorToken(BinaryOperatorToken):
+class ComparisonOperatorToken(OperatorToken):
 
     def get_node(self, left, right):
         return ast.nodes.ComparisonNode(left, right)
@@ -79,7 +87,7 @@ class ComparisonOperatorToken(BinaryOperatorToken):
         super(ComparisonOperatorToken, self).__init__(7, '==')
 
 
-class AdditionOperatorToken(BinaryOperatorToken):
+class AdditionOperatorToken(OperatorToken):
 
     def get_node(self, left, right):
         return ast.nodes.AdditionNode(left, right)
@@ -88,7 +96,7 @@ class AdditionOperatorToken(BinaryOperatorToken):
         super(AdditionOperatorToken, self).__init__(4, '+')
 
 
-class SubtractionOperatorToken(BinaryOperatorToken):
+class SubtractionOperatorToken(OperatorToken):
 
     def get_node(self, left, right):
         return ast.nodes.SubtractionNode(left, right)
@@ -97,7 +105,7 @@ class SubtractionOperatorToken(BinaryOperatorToken):
         super(SubtractionOperatorToken, self).__init__(4, '-')
 
 
-class DivisionOperatorToken(BinaryOperatorToken):
+class DivisionOperatorToken(OperatorToken):
 
     def get_node(self, left, right):
         return ast.nodes.DivisionNode(left, right)
@@ -106,7 +114,7 @@ class DivisionOperatorToken(BinaryOperatorToken):
         super(DivisionOperatorToken, self).__init__(3, '/')
 
 
-class MultiplicationOperatorToken(BinaryOperatorToken):
+class MultiplicationOperatorToken(OperatorToken):
 
     def get_node(self, left, right):
         return ast.nodes.MultiplicationNode(left, right)
@@ -115,16 +123,17 @@ class MultiplicationOperatorToken(BinaryOperatorToken):
         super(MultiplicationOperatorToken, self).__init__(3, '*')
 
 
-class ExponentOperatorToken(BinaryOperatorToken):
+class ExponentOperatorToken(OperatorToken):
 
     def get_node(self, left, right):
         return ast.nodes.ExponentNode(left, right)
 
     def __init__(self):
-        super(ExponentOperatorToken, self).__init__(2, '**')
+        super(ExponentOperatorToken, self).__init__(2, '**',
+                                                    OperatorToken.RIGHT)
 
 
-class GreaterThanOperatorToken(BinaryOperatorToken):
+class GreaterThanOperatorToken(OperatorToken):
 
     def get_node(self, left, right):
         return ast.nodes.GreaterThanNode(left, right)
@@ -133,7 +142,7 @@ class GreaterThanOperatorToken(BinaryOperatorToken):
         super(GreaterThanOperatorToken, self).__init__(6, '>')
 
 
-class LessThanOperatorToken(BinaryOperatorToken):
+class LessThanOperatorToken(OperatorToken):
 
     def get_node(self, left, right):
         return ast.nodes.LessThanNode(left, right)
@@ -142,7 +151,7 @@ class LessThanOperatorToken(BinaryOperatorToken):
         super(LessThanOperatorToken, self).__init__(6, '<')
 
 
-class GreaterThanEqualOperatorToken(BinaryOperatorToken):
+class GreaterThanEqualOperatorToken(OperatorToken):
 
     def get_node(self, left, right):
         return ast.nodes.GreaterThanEqualNode(left, right)
@@ -151,7 +160,7 @@ class GreaterThanEqualOperatorToken(BinaryOperatorToken):
         super(GreaterThanEqualOperatorToken, self).__init__(6, '>=')
 
 
-class LessThanEqualOperatorToken(BinaryOperatorToken):
+class LessThanEqualOperatorToken(OperatorToken):
 
     def get_node(self, left, right):
         return ast.nodes.LessThanEqualNode(left, right)
@@ -160,7 +169,7 @@ class LessThanEqualOperatorToken(BinaryOperatorToken):
         super(LessThanEqualOperatorToken, self).__init__(6, '<=')
 
 
-class DotNotationOperatorToken(BinaryOperatorToken):
+class DotNotationOperatorToken(OperatorToken):
 
     def get_node(self, left, right):
         return ast.nodes.DotNotationNode(left, right)
@@ -169,7 +178,7 @@ class DotNotationOperatorToken(BinaryOperatorToken):
         super(DotNotationOperatorToken, self).__init__(1, '.')
 
 
-class LeftParenToken(BinaryOperatorToken):
+class LeftParenToken(OperatorToken):
 
     def get_node(self, left, right):
         assert False
@@ -178,7 +187,7 @@ class LeftParenToken(BinaryOperatorToken):
         super(LeftParenToken, self).__init__(1, '(')
 
 
-class RightParenToken(BinaryOperatorToken):
+class RightParenToken(OperatorToken):
 
     def get_node(self, left, right):
         assert False
