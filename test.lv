@@ -18,6 +18,10 @@ specials = [
     1
     {
         beer: 2
-        cheese: 10
+        cheese: [
+            5
+            10
+            15
+        ]
     }
 ]

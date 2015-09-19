@@ -255,6 +255,9 @@ class DictionaryNode(Node):
     def reduce(self, context):
         return self.data
 
+    def __repr__(self):
+        return "{%s}" % ", ".join(["%s: %s" % (k, v) for k, v in self.data.iteritems()])
+
 
 class ListNode(list):
 
