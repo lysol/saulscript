@@ -3,7 +3,10 @@ from lexer import *
 import sys
 import logging
 
-logging.basicConfig(level=logging.DEBUG)
+if len(sys.argv) > 2:
+    logging.basicConfig(level=logging.DEBUG)
+else:
+    logging.basicConfig(level=logging.ERROR)
 
 body = open(sys.argv[1], 'r').read()
 rt = Runtime()

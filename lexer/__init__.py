@@ -142,6 +142,8 @@ class Lexer(object):
                     self.save_token(tokens.RightSquareBraceToken())
                 elif char == ':':
                     self.save_token(tokens.ColonToken())
+                elif char == ',':
+                    self.save_token(tokens.CommaToken())
                 elif char in string.whitespace:
                     pass
             elif isinstance(self.current_token, tokens.StringLiteralToken):

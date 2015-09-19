@@ -95,6 +95,12 @@ class ColonToken(Token):
         super(ColonToken, self).__init__(':')
 
 
+class CommaToken(Token):
+
+    def __init__(self):
+        super(CommaToken, self).__init__(',')
+
+
 class NumberLiteralToken(LiteralToken):
 
     def __init__(self, body=''):

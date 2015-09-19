@@ -1,3 +1,4 @@
+/*
 what = 1 + 20 / (10 + 5) * 10 + 3
 doit = 100
 tacotruck = 0
@@ -8,17 +9,16 @@ tacos = 10
 tacos = 10 + -21
 burrito = tacos * -10
 empanada = -(tacos / 5)
+*/
 menu = {
-    tacos: 10
-    burritos: 20
+    tacos: 10, burritos: 20
 }
 specials = [
     1
     {
         beer: 2
         cheese: [
-            5
-            10 * 12
+            5, 10 * 12
             15
         ]
     }

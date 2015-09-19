@@ -70,7 +70,11 @@ class AST(object):
                 self.shift_token()
                 break
             expression = self.handle_operator_expression()
-            data.append(expression)
+            if isinstance(self.next_token, lexer.tokens.CommaToken):
+                # eat the comma and keep going
+                self.shift_token()
+            if expression is not None:
+                data.append(expression)
         return data
 
     def handle_dictionary_expression(self):
@@ -93,7 +97,8 @@ class AST(object):
             if not isinstance(colon, lexer.tokens.ColonToken):
                 raise ParseError("Expected a colon")
             expression = self.handle_operator_expression() # Goes until the end of a line. No comma needed!
-            data.set_item(name.body, expression)
+            if expression is not None:
+                data.set_item(name.body, expression)
         return data
 
     def handle_operator_expression(self):
@@ -114,8 +119,9 @@ class AST(object):
             except IndexError:
                 logging.debug("Encountered IndexError, break")
                 break
-            if isinstance(token, lexer.tokens.LineTerminatorToken):
-                logging.debug('encountered a line terminator, break it out')
+            if isinstance(token, lexer.tokens.LineTerminatorToken) or \
+                isinstance(token, lexer.tokens.CommaToken):
+                logging.debug('encountered a line terminator or a comma, break it out')
                 break
             if (prev_token is None or
                 isinstance(prev_token, lexer.tokens.OperatorToken)) and \
@@ -183,6 +189,10 @@ class AST(object):
         logging.debug('Output: ')
         logging.debug(output)
 
+        if len(output) == 0:
+            # nothing. probably a \n after a ,
+            return None
+
         tree_stack = []
         # turn the list of output tokens into a tree branch
         logging.debug('Turn list of output tokens into a tree branch')
@@ -209,6 +219,8 @@ class AST(object):
                     target = tree_stack.pop()
                     tree_stack.append(token.get_node(target))
         logging.debug("%s" % tree_stack)
+        if len(tree_stack) != 1:
+            logging.error("Tree stack length is not 1. Contents: %s", tree_stack)
         assert len(tree_stack) == 1
 
         logging.debug('The final tree leaf: %s', tree_stack[0])

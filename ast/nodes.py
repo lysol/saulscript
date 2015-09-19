@@ -266,3 +266,9 @@ class ListNode(list):
 
     def get_node(self):
         return self
+
+
+class InvocationNode(Node):
+
+    def __init__(self, name, argsList):
+        pass
