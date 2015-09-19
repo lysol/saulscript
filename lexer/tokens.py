@@ -77,6 +77,18 @@ class RightCurlyBraceToken(Token):
         super(RightCurlyBraceToken, self).__init__('}')
 
 
+class LeftSquareBraceToken(Token):
+
+    def __init__(self):
+        super(LeftSquareBraceToken, self).__init__('[')
+
+
+class RightSquareBraceToken(Token):
+
+    def __init__(self):
+        super(RightSquareBraceToken, self).__init__(']')
+
+
 class ColonToken(Token):
 
     def __init__(self):

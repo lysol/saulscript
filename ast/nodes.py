@@ -254,3 +254,12 @@ class DictionaryNode(Node):
 
     def reduce(self, context):
         return self.data
+
+
+class ListNode(list):
+
+    def reduce(self, context):
+        return list(self)
+
+    def get_node(self):
+        return self

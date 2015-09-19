@@ -14,3 +14,7 @@ menu = {
     tacos: 10
     burritos: 20
 }
+specials = [
+    1
+    2
+]

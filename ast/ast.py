@@ -56,7 +56,25 @@ class AST(object):
         for line_num, branch in enumerate(self.tree):
             logging.debug("Operation %d:\n%s", line_num, branch)
 
+    def handle_list_expression(self):
+        logging.debug("Handling a list expression")
+        self.shift_token() # get rid of [
+        data = nodes.ListNode()
+        while isinstance(self.next_token, lexer.tokens.LineTerminatorToken):
+            # ignore line breaks here until we see data
+            self.shift_token()
+        while True:
+            logging.debug("List looks like this now: %s", data)
+            if isinstance(self.next_token, lexer.tokens.RightSquareBraceToken):
+                logging.debug("Encountered a ], shift it off and return the list node.")
+                self.shift_token()
+                break
+            expression = self.handle_operator_expression()
+            data.append(expression)
+        return data
+
     def handle_dictionary_expression(self):
+        logging.debug("Handling a dictionary expression")
         self.shift_token() # get rid of {
         data = nodes.DictionaryNode()
         while True:
@@ -89,11 +107,15 @@ class AST(object):
             try:
                 if isinstance(self.next_token, lexer.tokens.LeftCurlyBraceToken):
                     output.append(self.handle_dictionary_expression())
+                if isinstance(self.next_token, lexer.tokens.LeftSquareBraceToken):
+                    output.append(self.handle_list_expression())
                 token = self.shift_token()
+                logging.debug("Operator context: Consider %s", token)
             except IndexError:
+                logging.debug("Encountered IndexError, break")
                 break
             if isinstance(token, lexer.tokens.LineTerminatorToken):
-                logging.debug('break it out')
+                logging.debug('encountered a line terminator, break it out')
                 break
             if (prev_token is None or
                 isinstance(prev_token, lexer.tokens.OperatorToken)) and \
@@ -176,7 +198,11 @@ class AST(object):
                 logging.debug("Determining if %s is unary or binary", token)
                 if isinstance(token, lexer.tokens.BinaryOperatorToken):
                     logging.debug("%s is binary", token)
-                    right, left = tree_stack.pop(), tree_stack.pop()
+                    try:
+                        right, left = tree_stack.pop(), tree_stack.pop()
+                    except IndexError:
+                        logging.error("Encountered IndexError. Tree stack: %s", tree_stack)
+                        raise ParseError()
                     tree_stack.append(token.get_node(left, right))
                 elif isinstance(token, lexer.tokens.UnaryOperatorToken):
                     logging.debug("%s is unary", token)
@@ -189,7 +215,7 @@ class AST(object):
         return tree_stack.pop()  # -----------===============#################*
 
     def handle_token(self, token):
-        if isinstance(token, nodes.Node):
+        if isinstance(token, nodes.Node) or isinstance(token, nodes.ListNode):
             # already resolved down the chain
             return token
         if isinstance(token, lexer.tokens.IdentifierToken):
@@ -200,7 +226,7 @@ class AST(object):
             return nodes.NumberNode(token.body)
         elif isinstance(token, lexer.tokens.StringLiteralToken):
             return nodes.StringNode(token.body)
-        assert False
+        assert "Unexpected token: %s (%s)" % (token, token.__class__)
 
     def handle_expression(self):
         while True:
@@ -210,7 +236,8 @@ class AST(object):
                 logging.debug("Consider %s", token.__class__)
             except IndexError:
                 raise OutOfTokens('During handle expression')
-            if isinstance(token, lexer.tokens.IdentifierToken):
+            if isinstance(token, lexer.tokens.IdentifierToken) or \
+                isinstance(token, lexer.tokens.LiteralToken):
                 if self.handler_exists(token):
                     return self.handle_identifier()
                 else:
