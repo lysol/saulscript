@@ -253,7 +253,7 @@ class DictionaryNode(Node):
         return self.data[name]
 
     def reduce(self, context):
-        return self.data
+        return {k: self.data[k].reduce(context) for k in self.data}
 
     def __repr__(self):
         return "{%s}" % ", ".join(["%s: %s" % (k, v) for k, v in self.data.iteritems()])
@@ -262,7 +262,7 @@ class DictionaryNode(Node):
 class ListNode(list):
 
     def reduce(self, context):
-        return list(self)
+        return [item.reduce(context) for item in self]
 
     def get_node(self):
         return self
