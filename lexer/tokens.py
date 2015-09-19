@@ -19,6 +19,10 @@ class Token(object):
     def __repr__(self):
         return self.__str__()
 
+    def get_node(self):
+        # ha ha this is bad
+        return self
+
 
 class LineTerminatorToken(Token):
 
@@ -70,7 +74,7 @@ class LeftCurlyBraceToken(Token):
 class RightCurlyBraceToken(Token):
 
     def __init__(self):
-        super(LeftCurlyBraceToken, self).__init__('}')
+        super(RightCurlyBraceToken, self).__init__('}')
 
 
 class ColonToken(Token):

@@ -10,3 +10,7 @@ bongs = 2 + 2 ** 2 / 4
 tacos = 10 + -21
 burrito = tacos * -10
 empanada = -(tacos / 5)
+menu = {
+    tacos: 10
+    burritos: 20
+}

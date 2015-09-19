@@ -5,9 +5,7 @@ import logging
 
 
 class ParseError(Exception):
-
-    def __init__(self, message):
-        self.message = message
+    pass
 
 
 class OutOfTokens(Exception):
@@ -58,6 +56,28 @@ class AST(object):
         for line_num, branch in enumerate(self.tree):
             logging.debug("Operation %d:\n%s", line_num, branch)
 
+    def handle_dictionary_expression(self):
+        self.shift_token() # get rid of {
+        data = nodes.DictionaryNode()
+        while True:
+            name = self.shift_token()
+            if isinstance(name, lexer.tokens.LineTerminatorToken):
+                # So, we can have whitespace after a {
+                continue
+            if isinstance(name, lexer.tokens.RightCurlyBraceToken):
+                # done with this dictionary since we got a }
+                break
+            if not isinstance(name, lexer.tokens.IdentifierToken) and \
+                not isinstance(name, lexer.tokens.NumberLiteralToken) and \
+                not isinstance(name, lexer.tokens.StringLiteralToken):
+                raise ParseError("Expected a name, got %s (%s)" % (name, name.__class__))
+            colon = self.shift_token()
+            if not isinstance(colon, lexer.tokens.ColonToken):
+                raise ParseError("Expected a colon")
+            expression = self.handle_operator_expression() # Goes until the end of a line. No comma needed!
+            data.set_item(name.body, expression)
+        return data
+
     def handle_operator_expression(self):
         output = []
         op_stack = []
@@ -67,6 +87,8 @@ class AST(object):
             logging.debug("Output stack: %s", output)
             logging.debug("Operator stack: %s", op_stack)
             try:
+                if isinstance(self.next_token, lexer.tokens.LeftCurlyBraceToken):
+                    output.append(self.handle_dictionary_expression())
                 token = self.shift_token()
             except IndexError:
                 break
@@ -81,10 +103,12 @@ class AST(object):
             if not isinstance(token, lexer.tokens.OperatorToken) and not \
                     isinstance(token, lexer.tokens.LiteralToken) and not \
                     isinstance(token, lexer.tokens.IdentifierToken):
-                raise ParseError(
-                    "Expected an operator, literal, or identifier."
-                    "(Got %s: %s)" % (token.__class__, token.body))
-            if not isinstance(token, lexer.tokens.OperatorToken):
+                msg = "Expected an operator, literal, or identifier. (Got %s: %s)" % \
+                    (token.__class__, token.body)
+                logging.error(msg)
+                raise ParseError(msg)
+            if isinstance(token, nodes.Node) or not isinstance(token, lexer.tokens.OperatorToken):
+                # If anything is a node, append it
                 output.append(token)
             else:
                 while len(op_stack) > 0:
@@ -165,6 +189,9 @@ class AST(object):
         return tree_stack.pop()  # -----------===============#################*
 
     def handle_token(self, token):
+        if isinstance(token, nodes.Node):
+            # already resolved down the chain
+            return token
         if isinstance(token, lexer.tokens.IdentifierToken):
             # variable?
             # in the future, a function
