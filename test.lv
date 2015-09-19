@@ -16,5 +16,8 @@ menu = {
 }
 specials = [
     1
-    2
+    {
+        beer: 2
+        cheese: 10
+    }
 ]
