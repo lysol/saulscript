@@ -9,7 +9,7 @@ tacos = 10
 tacos = 10 + -21
 burrito = tacos * -10
 empanada = -(tacos / 5)
-*/
+
 menu = {
     tacos: 10, burritos: 20
 }
@@ -23,3 +23,11 @@ specials = [
         ]
     }
 ]
+*/
+
+example = function(arg,arg2) {
+    hello = 10 * arg + arg
+    return hello
+}
+
+result = example(10, 20)

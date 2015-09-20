@@ -8,6 +8,10 @@ class ParseError(Exception):
     pass
 
 
+class EndContextExecution(Exception):
+    pass
+
+
 class OutOfTokens(Exception):
 
     def __init__(self, message):
@@ -51,10 +55,59 @@ class AST(object):
             except OutOfTokens as e:
                 logging.debug('out of tokens: %s', e.message)
                 break
+            except EndContextExecution:
+                logging.error('Unexpected }')
+                raise ParseError("Unexpected }")
 
     def dump(self):
         for line_num, branch in enumerate(self.tree):
             logging.debug("Operation %d:\n%s", line_num, branch)
+
+    def handle_function_definition(self):
+        logging.debug("Handling a function definition")
+        self.shift_token() # get rid of (
+        sig_names = []
+        while True:
+            token = self.shift_token()
+            if isinstance(token, lexer.tokens.RightParenToken):
+                break # get rid of it
+            if isinstance(token, lexer.tokens.CommaToken):
+                continue # eat it
+            if not isinstance(token, lexer.tokens.IdentifierToken):
+                raise ParseError("Expected an argument name, got %s" % token)
+            sig_names.append(token.body)
+        if not isinstance(self.next_token, lexer.tokens.LeftCurlyBraceToken):
+            raise ParseError("Expected {, got %s" % self.next_token)
+        self.shift_token() # get rid of {
+
+        new_branch = nodes.Branch()
+        while True:
+            try:
+                new_branch.append(self.handle_expression())
+            except EndContextExecution:
+                # end of function declaration
+                break
+        func_node = nodes.FunctionNode(sig_names, new_branch)
+        return func_node
+
+    def handle_function_invocation(self, name_token):
+        logging.debug("Handling a function invocation")
+        self.shift_token() # get rid of (
+        arg_tokens = []
+        logging.debug("Examining arguments")
+        while True:
+            token = self.next_token
+            logging.debug("Function Invocation: Consider %s" % token)
+            if isinstance(token, lexer.tokens.RightParenToken):
+                self.shift_token()
+                break
+            arg_tokens.append(self.handle_operator_expression())
+            if isinstance(self.next_token, lexer.tokens.CommaToken):
+                # eat the comma and keep going
+                self.shift_token()
+                continue
+        logging.debug("Done reading arguments")
+        return nodes.InvocationNode(name_token.body, arg_tokens)          
 
     def handle_list_expression(self):
         logging.debug("Handling a list expression")
@@ -105,6 +158,8 @@ class AST(object):
         output = []
         op_stack = []
         prev_token = None
+        # keep track of the parens opened. If we deplete all the (s, stop parsing the operator expression
+        paren_count = 0
 
         while True:
             logging.debug("Output stack: %s", output)
@@ -112,16 +167,27 @@ class AST(object):
             try:
                 if isinstance(self.next_token, lexer.tokens.LeftCurlyBraceToken):
                     output.append(self.handle_dictionary_expression())
-                if isinstance(self.next_token, lexer.tokens.LeftSquareBraceToken):
+                elif isinstance(self.next_token, lexer.tokens.LeftSquareBraceToken):
                     output.append(self.handle_list_expression())
+                elif isinstance(self.next_token, lexer.tokens.RightCurlyBraceToken):
+                    logging.debug("} encountered, stop processing operator expression")
+                    break
+                elif isinstance(self.next_token, lexer.tokens.LeftParenToken):
+                    paren_count += 1
+                elif isinstance(self.next_token, lexer.tokens.RightParenToken):
+                    paren_count -= 1
+                    if paren_count < 0:
+                        # too many )s found. This is the end of the operator expression
+                        break
                 token = self.shift_token()
                 logging.debug("Operator context: Consider %s", token)
             except IndexError:
                 logging.debug("Encountered IndexError, break")
                 break
             if isinstance(token, lexer.tokens.LineTerminatorToken) or \
+                isinstance(token, lexer.tokens.RightCurlyBraceToken) or \
                 isinstance(token, lexer.tokens.CommaToken):
-                logging.debug('encountered a line terminator or a comma, break it out')
+                logging.debug('encountered a line terminator, comma, or }, break it out')
                 break
             if (prev_token is None or
                 isinstance(prev_token, lexer.tokens.OperatorToken)) and \
@@ -137,7 +203,14 @@ class AST(object):
                 raise ParseError(msg)
             if isinstance(token, nodes.Node) or not isinstance(token, lexer.tokens.OperatorToken):
                 # If anything is a node, append it
-                output.append(token)
+                if isinstance(self.next_token, lexer.tokens.LeftParenToken):
+                    # function invocation or definition
+                    if token.body == 'function':
+                        output.append(self.handle_function_definition())
+                    else:
+                        output.append(self.handle_function_invocation(token))
+                else:
+                    output.append(token)
             else:
                 while len(op_stack) > 0:
                     token2 = op_stack[-1]
@@ -258,6 +331,10 @@ class AST(object):
                 logging.debug("Delete this infernal line terminator")
                 self.shift_token()
                 return nodes.NopNode()
+            elif isinstance(token, lexer.tokens.RightCurlyBraceToken):
+                logging.debug("Found }, beat it")
+                self.shift_token()
+                raise EndContextExecution()
 
     def handler_exists(self, token):
         method_name = 'handle_identifier_' + token.body
@@ -277,7 +354,11 @@ class AST(object):
         while not isinstance(self.next_token, lexer.tokens.IdentifierToken) or \
                 self.next_token.body not in ['else', 'end']:
             logging.debug("Checking next expression as part of THEN clause")
-            then_branch.append(self.handle_expression())
+            try:
+                then_branch.append(self.handle_expression())
+            except EndContextExecution:
+                logging.error("There shouldn't be a } here because we're in an if statement")
+                raise ParseError("Unexpected }")
 
         if isinstance(self.next_token, lexer.tokens.IdentifierToken) and \
                 self.next_token.body == 'else':
@@ -286,7 +367,11 @@ class AST(object):
                     self.tokens[0:2] != ['end', 'if']:
                 logging.debug(
                     "Checking next expression as part of ELSE clause")
-                else_branch.append(self.handle_expression())
+                try:
+                    else_branch.append(self.handle_expression())
+                except EndContextExecution:
+                    logging.error("There shouldn't be a } here because we're in an if statement")
+                    raise ParseError("Unexpected }")
         end_token = self.shift_token()
         if_token = self.shift_token()
         logging.debug("Then: %s, Else: %s, End If: %s %s",
@@ -305,3 +390,8 @@ class AST(object):
     def handle_identifier_false(self, token):
         assert token.value.lower() == 'false'
         return nodes.BooleanNode(False)
+
+    def handle_identifier_return(self, token):
+        logging.debug("Handling return statement")
+        return_node = self.handle_operator_expression()
+        return nodes.ReturnNode(return_node)

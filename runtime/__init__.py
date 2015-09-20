@@ -4,10 +4,20 @@ import logging
 from context import Context
 
 
+class Context(dict):
+
+    def __init__(self, *args, **kwargs):
+        self.return_value = None
+        super(Context, self).__init__(self, *args, **kwargs)
+
+    def set_return_value(self, node):
+        self.return_value = node
+
+
 class Runtime(object):
 
     def __init__(self):
-        self.context = {}
+        self.context = Context()
 
     def execute(self, src):
         new_lexer = lexer.Lexer(src)

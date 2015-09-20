@@ -1,6 +1,12 @@
 from decimal import Decimal
+from context import Context
 import operator
 import logging
+import ast
+
+
+class ReturnRequestedException(Exception):
+    pass
 
 
 class ObjectResolutionError(Exception):
@@ -39,13 +45,25 @@ class LiteralNode(Node):
 
 class Branch(list):
 
+    def __init__(self, *args, **kwargs):
+        self.return_value = None
+        super(Branch, self).__init__(*args, **kwargs)
+
     def __repr__(self):
         return '[%s]' % (", ".join(map(lambda i: i.__repr__(), self)))
 
+    def set_return(self, node):
+        self.return_value = node
+
     def execute(self, context):
         for node in self:
-            node.reduce(context)
-        return context
+            try:
+                node.reduce(context)
+            except ReturnRequestedException:
+                break
+            except ast.EndContextExecution:
+                break
+        return context.return_value
 
 
 class SaulRuntimeError(Exception):
@@ -268,7 +286,52 @@ class ListNode(list):
         return self
 
 
+class FunctionNode(Node):
+
+    def __init__(self, signature=[], branch=Branch(), context={}):
+        self.context = context
+        self.branch = branch
+        self.signature = signature
+
+    def reduce(self, context):
+        def closure(*args):
+            # Copy the function's context so assignments are thrown away when done
+            execution_context = Context()
+            execution_context.update(self.context) 
+            # include the function arguments in the current execution context
+            for index, name_identifier in enumerate(self.signature):
+                # grab the argument from the invocation's argument list, reduce each of them,
+                # and set the execution context item that corresponds to this function's signature
+                try:
+                    execution_context[name_identifier] = args[index].reduce(context)
+                except IndexError:
+                    raise SaulRuntimeError("Not enough arguments supplied.")
+            # execute the branch
+            return_node = self.branch.execute(execution_context)
+            return return_node
+        return closure
+
+
+class ReturnNode(Node):
+
+    def __init__(self, return_node):
+        self.return_node = return_node
+
+    def reduce(self, context):
+        context.set_return_value(self.return_node.reduce(context))
+        raise ReturnRequestedException()
+
+
 class InvocationNode(Node):
 
-    def __init__(self, name, argsList):
-        pass
+    def __init__(self, callable_name, arg_list):
+        self.callable_name = callable_name
+        self.arg_list = arg_list
+
+    def reduce(self, context):
+        if self.callable_name not in context:
+            raise NameError("%s is not defined" % self.callable_name)
+        callable_item = context[self.callable_name]
+        if not callable(callable_item):
+            raise SaulRuntimeError("%s is not callable" % callable_item)
+        return callable_item(*self.arg_list)
