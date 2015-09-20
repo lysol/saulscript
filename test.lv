@@ -31,3 +31,9 @@ example = function(arg,arg2) {
 }
 
 result = example(10, 20)
+
+val = 0
+
+while val < 10
+    val = val + 1
+end while

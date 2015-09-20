@@ -102,6 +102,44 @@ class IfNode(Node):
             return self.else_branch.execute(context)
 
 
+class WhileNode(Node):
+
+    def __init__(self, condition, branch=Branch()):
+        self.condition = condition
+        self.branch = branch
+
+    def __repr__(self):
+        return "<while %s: %s>" % (self.condition, self.branch)
+
+    def reduce(self, context):
+        logging.debug("Running while loop")
+        while True:
+            result = self.condition.reduce(context)
+            logging.debug("While result: %s" % result)
+            if not result:
+                break
+            self.branch.execute(context)
+        return context
+
+
+class ForNode(Node):
+
+    def __init__(self, local_name, iterable, branch=Branch()):
+        self.local_name = local_name
+        self.iterable = iterable
+        self.branch = branch
+
+    def __repr__(self):
+        return "<for %s in %s: %s>" % (self.iterated, self.iterable, branch)
+
+    def reduce(self, context):
+        logging.debug("Running for loop")
+        for item in self.iterable.reduce():
+            # same as python. variable is set in the outer context
+            context[local_name] = item
+            self.branch.execute(context)
+
+
 class UnaryOpNode(Node):
 
     def __init__(self, target):
@@ -335,3 +373,4 @@ class InvocationNode(Node):
         if not callable(callable_item):
             raise SaulRuntimeError("%s is not callable" % callable_item)
         return callable_item(*self.arg_list)
+

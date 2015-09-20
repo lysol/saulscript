@@ -395,3 +395,23 @@ class AST(object):
         logging.debug("Handling return statement")
         return_node = self.handle_operator_expression()
         return nodes.ReturnNode(return_node)
+
+    def handle_identifier_while(self, token):
+        logging.debug("Handling while loop")
+        condition = self.handle_operator_expression()
+        branch = nodes.Branch()
+        while not isinstance(self.next_token, lexer.tokens.IdentifierToken) or \
+                self.next_token.body not in ['end']:
+            try:
+                branch.append(self.handle_expression())
+            except EndContextExecution:
+                logging.error("There shouldn't be a } here because we're in a while statement")
+                raise ParseError("Unexpected }")
+        end_token = self.shift_token()
+        while_token = self.shift_token()
+        assert isinstance(end_token, lexer.tokens.IdentifierToken) and \
+            end_token.body == 'end'
+        assert isinstance(while_token, lexer.tokens.IdentifierToken) and \
+            while_token.body == 'while'
+
+        return nodes.WhileNode(condition, branch)
