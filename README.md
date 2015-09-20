@@ -12,8 +12,8 @@ To-do:
 - [x] Data structures
 - [x] The other random things I completed before I made this list
 - [ ] Print statements (most people probably do this first but ¯\\\_(ツ)_/¯)
-- [ ] Function invocations (doing this first because the logic for context-binding needs to be done)
-- [ ] Function declaration
+- [x] Function invocations (doing this first because the logic for context-binding needs to be done)
+- [x] Function declaration
 - [ ] Loops
 - [ ] Operation counting
 - [ ] Resource limits
