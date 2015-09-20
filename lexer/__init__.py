@@ -79,11 +79,11 @@ class Lexer(object):
                     # ignore whatever is here
                     continue
                 elif char in "'\"":
-                    self.current_token = tokens.StringLiteralToken(char)
+                    self.current_token = tokens.StringLiteralToken('')
                 elif char in string.digits or char == '.' and \
                         self.next_char in string.digits:
                     self.current_token = tokens.NumberLiteralToken(char)
-                elif char in string.letters:
+                elif char in string.letters or char == '_':
                     self.current_token = tokens.IdentifierToken(char)
                 elif char == '>':
                     if self.next_char == '=':
@@ -167,7 +167,7 @@ class Lexer(object):
                     self.back_up()
 
             elif isinstance(self.current_token, tokens.IdentifierToken):
-                if char in string.digits or char in string.letters:
+                if char in string.digits or char in string.letters or char in '$_':
                     self.push_char(char)
                 elif char == '.':
                     # object attribute resolution operator

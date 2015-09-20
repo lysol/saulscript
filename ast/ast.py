@@ -172,6 +172,9 @@ class AST(object):
                 elif isinstance(self.next_token, lexer.tokens.RightCurlyBraceToken):
                     logging.debug("} encountered, stop processing operator expression")
                     break
+                elif isinstance(self.next_token, lexer.tokens.RightSquareBraceToken):
+                    logging.debug("] encountered, stop processing operator expression")
+                    break                
                 elif isinstance(self.next_token, lexer.tokens.LeftParenToken):
                     paren_count += 1
                 elif isinstance(self.next_token, lexer.tokens.RightParenToken):
@@ -415,3 +418,34 @@ class AST(object):
             while_token.body == 'while'
 
         return nodes.WhileNode(condition, branch)
+
+    def handle_identifier_for(self, token):
+        logging.debug("Handling for loop")
+
+        token = self.shift_token()
+        if not isinstance(token, lexer.tokens.IdentifierToken):
+            raise ParseError("Expected a name, got %s" % token)
+        var_name = token.body
+
+        token = self.shift_token()
+        if not isinstance(token, lexer.tokens.IdentifierToken) or \
+            token.body != 'in':
+            raise ParseError("Expected 'in', got %s" % token)
+        
+        iterable = self.handle_operator_expression()
+        branch = nodes.Branch()
+        while not isinstance(self.next_token, lexer.tokens.IdentifierToken) or \
+                self.next_token.body not in ['end']:
+            try:
+                branch.append(self.handle_expression())
+            except EndContextExecution:
+                logging.error("There shouldn't be a } here because we're in a while statement")
+                raise ParseError("Unexpected }")
+        end_token = self.shift_token()
+        for_token = self.shift_token()
+        assert isinstance(end_token, lexer.tokens.IdentifierToken) and \
+            end_token.body == 'end'
+        assert isinstance(for_token, lexer.tokens.IdentifierToken) and \
+            for_token.body == 'for'     
+        
+        return nodes.ForNode(var_name, iterable, branch)   

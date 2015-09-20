@@ -60,6 +60,11 @@ class IdentifierToken(Token):
     def __init__(self, body):
         super(IdentifierToken, self).__init__(body)
 
+    def __repr__(self):
+        return "<Identifier: %s>" % self.body
+
+    def __str__(self):
+        return self.__repr__()
 
 class LiteralToken(Token):
     pass
@@ -115,6 +120,9 @@ class StringLiteralToken(LiteralToken):
 
     def show(self):
         return '"%s"' % (self.body.replace('"', '\\"'))
+
+    def __str__(self):
+        return "<StringLiteralToken: %s>" % self.body
 
 
 class AssignmentOperatorToken(BinaryOperatorToken):

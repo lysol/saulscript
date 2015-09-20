@@ -67,9 +67,7 @@ class Branch(list):
 
 
 class SaulRuntimeError(Exception):
-
-    def __init__(self, message):
-        self.message = message
+    pass
 
 
 class IfNode(Node):
@@ -134,9 +132,9 @@ class ForNode(Node):
 
     def reduce(self, context):
         logging.debug("Running for loop")
-        for item in self.iterable.reduce():
+        for item in self.iterable.reduce(context):
             # same as python. variable is set in the outer context
-            context[local_name] = item
+            context[self.local_name] = item
             self.branch.execute(context)
 
 
@@ -290,10 +288,12 @@ class BooleanNode(Node):
 class DotNotationNode(BinaryOpNode):
 
     def operation(self, left, right, context):
-        if not isinstance(left, VariableNode):
+        if type(right) != str:
+            logging.error("Right thing shouldn't be %s" % right)
             raise ObjectResolutionError()
-
-        return context[left.name].reduce()[right.name].reduce()
+        if right not in left:
+            raise SaulRuntimeError("No dict named %s. Local context: %s" % (right, context))
+        return left[right]
 
 
 class DictionaryNode(Node):
