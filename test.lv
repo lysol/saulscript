@@ -22,12 +22,13 @@ end while
 
 worf = 0
 for x in menu
-    worf = worf + menu.x
+    worf = worf + menu.burritos
 end for
 
 specials_txt = ''
 
+cows = 0
 for y in specials
-    specials_txt = specials_txt + ' ' + y
+    cows = cows + 1
 
 menu['empanadas'] = menu.tacos + menu.burritos

@@ -53,7 +53,8 @@ class AST(object):
                 # handle it
                 self.tree.append(self.handle_expression())
             except OutOfTokens as e:
-                logging.debug('out of tokens: %s', e.message)
+                logging.debug('*** Out of tokens: %s', e.message)
+                logging.debug("Final AST: %s" % self.tree)
                 break
             except EndContextExecution:
                 logging.error('Unexpected }')
@@ -326,6 +327,7 @@ class AST(object):
         if isinstance(token, lexer.tokens.IdentifierToken):
             # variable?
             # in the future, a function
+            logging.debug("Deciding that %s is a variable" % token)
             return nodes.VariableNode(token.body)
         elif isinstance(token, lexer.tokens.NumberLiteralToken):
             return nodes.NumberNode(token.body)
@@ -465,4 +467,5 @@ class AST(object):
         assert isinstance(for_token, lexer.tokens.IdentifierToken) and \
             for_token.body == 'for'     
         
+        logging.debug("Returning for loop node")
         return nodes.ForNode(var_name, iterable, branch)   

@@ -128,7 +128,7 @@ class ForNode(Node):
         self.branch = branch
 
     def __repr__(self):
-        return "<for %s in %s: %s>" % (self.iterated, self.iterable, branch)
+        return "<for %s in %s: %s>" % (self.local_name, self.iterable, self.branch)
 
     def reduce(self, context):
         logging.debug("Running for loop")
@@ -210,9 +210,11 @@ class ExponentNode(BinaryOpNode):
 class AssignmentNode(BinaryOpNode):
 
     def reduce(self, context):
-        logging.debug("I am a %s" % self)
-        logging.debug("%s %s", self.left, self.right)
-        context[self.left.name] = self.right.reduce(context)
+        logging.debug("AssignmentNode: I am a %s" % self)
+        logging.debug("AssignmentNode: %s %s", self.left, self.right)
+        result = self.right.reduce(context)
+        logging.debug("Assignment result: %s" % result)
+        context[self.left.name] = result
 
 
 class ComparisonNode(BinaryOpNode):
@@ -264,7 +266,11 @@ class NumberNode(LiteralNode):
 class StringNode(LiteralNode):
 
     def __init__(self, string):
-        self.value = unicode(string)
+        logging.debug("Assigning '%s' to %s" % (string, self.__class__))
+        super(StringNode, self).__init__(string)
+
+    def reduce(self, context):
+        return self.value
 
 
 class VariableNode(LiteralNode):
@@ -289,21 +295,11 @@ class BooleanNode(Node):
 class SubscriptNotationNode(BinaryOpNode):
 
     def reduce(self, context):
+        logging.debug("Reducing subscript notation")
         if not isinstance(self.left, DictionaryNode) and not isinstance(self.left, ListNode):
             raise SaulRuntimeError("Subscript notation must be used with a list or dictionary (Got %s)" % self.left.__class__)
         index = self.right.reduce(context)
-
-
-    def operation(self, left, right, context):
-        if type(right) != str:
-            logging.error("Right thing shouldn't be %s" % right)
-            raise ObjectResolutionError()
-        if right not in left:
-            raise SaulRuntimeError("No dict named %s. Local context: %s" % (right, context))
-        try:
-            return left[right]
-        except IndexError:
-            raise SaulRuntimeError("No item %s in %s" % (right, left))
+        return self.left.reduce()[index]
 
 
 class DotNotationNode(BinaryOpNode):
@@ -311,9 +307,12 @@ class DotNotationNode(BinaryOpNode):
     def reduce(self, context):
         logging.debug("Resolving dot notation")
         dictthing = self.left.reduce(context)
-        if not isinstance(self.left, DictionaryNode):
-            raise SaulRuntimeError("Dot notation used with non-dictionary: %s" % self.left.__class__)
-        return dictting[self.right.name]
+        if type(dictthing) != dict:
+            raise SaulRuntimeError("Dot notation used with non-dictionary: %s" % dictthing)
+        try:
+            return dictthing[self.right.name]
+        except KeyError:
+            raise SaulRuntimeError("No key named %s in %s" % (self.right.name, dictthing))
 
 
 class DictionaryNode(dict):
