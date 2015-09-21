@@ -90,6 +90,16 @@ class AST(object):
         func_node = nodes.FunctionNode(sig_names, new_branch)
         return func_node
 
+    def handle_subscript_notation(self, variable_token):
+        logging.debug("Handling a subscript notation")
+        self.shift_token() # get rid of [
+        index_node = self.handle_operator_expression() # ends before ]
+        sub_node = nodes.SubscriptNotationNode(nodes.VariableNode(variable_token.body), index_node)
+        if not isinstance(self.next_token, lexer.tokens.RightSquareBraceToken):
+            raise ParseError("Unexpected %s during subscript notation parse" % self.next_token)
+        self.shift_token()
+        return sub_node
+
     def handle_function_invocation(self, name_token):
         logging.debug("Handling a function invocation")
         self.shift_token() # get rid of (
@@ -151,7 +161,7 @@ class AST(object):
                 raise ParseError("Expected a colon")
             expression = self.handle_operator_expression() # Goes until the end of a line. No comma needed!
             if expression is not None:
-                data.set_item(name.body, expression)
+                data[name.body] = expression
         return data
 
     def handle_operator_expression(self):
@@ -212,6 +222,9 @@ class AST(object):
                         output.append(self.handle_function_definition())
                     else:
                         output.append(self.handle_function_invocation(token))
+                elif isinstance(self.next_token, lexer.tokens.LeftSquareBraceToken):
+                    # subscript syntax
+                    output.append(self.handle_subscript_notation(token))
                 else:
                     output.append(token)
             else:
@@ -275,12 +288,13 @@ class AST(object):
         while True:
             try:
                 token = output.pop(0)
+                logging.debug("Consider %s from output" % token)
             except IndexError:
                 break
             if not isinstance(token, lexer.tokens.OperatorToken):
                 tree_stack.append(self.handle_token(token))
             else:
-                logging.debug("%s", tree_stack)
+                logging.debug("Tree stack: %s", tree_stack)
                 logging.debug("Determining if %s is unary or binary", token)
                 if isinstance(token, lexer.tokens.BinaryOperatorToken):
                     logging.debug("%s is binary", token)
@@ -303,8 +317,11 @@ class AST(object):
         return tree_stack.pop()  # -----------===============#################*
 
     def handle_token(self, token):
-        if isinstance(token, nodes.Node) or isinstance(token, nodes.ListNode):
+        logging.debug("handle token")
+        if isinstance(token, nodes.Node) or isinstance(token, nodes.ListNode) or \
+            isinstance(token, nodes.DictionaryNode):
             # already resolved down the chain
+            logging.debug("This token is actually a node, so return it")
             return token
         if isinstance(token, lexer.tokens.IdentifierToken):
             # variable?

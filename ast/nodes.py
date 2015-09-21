@@ -210,6 +210,7 @@ class ExponentNode(BinaryOpNode):
 class AssignmentNode(BinaryOpNode):
 
     def reduce(self, context):
+        logging.debug("I am a %s" % self)
         logging.debug("%s %s", self.left, self.right)
         context[self.left.name] = self.right.reduce(context)
 
@@ -285,7 +286,13 @@ class BooleanNode(Node):
         self.value = value
 
 
-class DotNotationNode(BinaryOpNode):
+class SubscriptNotationNode(BinaryOpNode):
+
+    def reduce(self, context):
+        if not isinstance(self.left, DictionaryNode) and not isinstance(self.left, ListNode):
+            raise SaulRuntimeError("Subscript notation must be used with a list or dictionary (Got %s)" % self.left.__class__)
+        index = self.right.reduce(context)
+
 
     def operation(self, left, right, context):
         if type(right) != str:
@@ -293,26 +300,36 @@ class DotNotationNode(BinaryOpNode):
             raise ObjectResolutionError()
         if right not in left:
             raise SaulRuntimeError("No dict named %s. Local context: %s" % (right, context))
-        return left[right]
+        try:
+            return left[right]
+        except IndexError:
+            raise SaulRuntimeError("No item %s in %s" % (right, left))
 
 
-class DictionaryNode(Node):
-
-    def __init__(self):
-        super(DictionaryNode, self).__init__()
-        self.data = {}
-
-    def set_item(self, name, value):
-        self.data[name] = value
-
-    def get_item(self, name):
-        return self.data[name]
+class DotNotationNode(BinaryOpNode):
 
     def reduce(self, context):
-        return {k: self.data[k].reduce(context) for k in self.data}
+        logging.debug("Resolving dot notation")
+        dictthing = self.left.reduce(context)
+        if not isinstance(self.left, DictionaryNode):
+            raise SaulRuntimeError("Dot notation used with non-dictionary: %s" % self.left.__class__)
+        return dictting[self.right.name]
+
+
+class DictionaryNode(dict):
+
+    def __init__(self, *args, **kwargs):
+        super(DictionaryNode, self).__init__(*args, **kwargs)
+
+    def reduce(self, context):
+        logging.debug("Reducing dictionary")
+        return {k: self[k].reduce(context) for k in self}
 
     def __repr__(self):
-        return "{%s}" % ", ".join(["%s: %s" % (k, v) for k, v in self.data.iteritems()])
+        return "{%s}" % ", ".join(["%s: %s" % (k, v) for k, v in self.iteritems()])
+
+    def __str__(self):
+        return self.__repr__()
 
 
 class ListNode(list):

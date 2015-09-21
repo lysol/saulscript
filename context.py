@@ -1,3 +1,15 @@
+import ast
+import ast.nodes
+
+
+class DeferredReference(object):
+
+    def resolve(self, value):
+        self.parent[name] = value
+        return value
+
+    def __init__(self, name, parent):
+        self.parent = parent
 
 
 class Context(dict):

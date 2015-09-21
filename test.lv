@@ -1,3 +1,4 @@
+heyhey = 99
 
 menu = {
     tacos: 10, burritos: 20
@@ -28,3 +29,5 @@ specials_txt = ''
 
 for y in specials
     specials_txt = specials_txt + ' ' + y
+
+menu['empanadas'] = menu.tacos + menu.burritos
