@@ -1,13 +1,6 @@
 import string
 import tokens
-
-
-class EndOfFileException(Exception):
-    pass
-
-
-class ParseError(Exception):
-    pass
+from .. import exceptions
 
 
 class Lexer(object):
@@ -34,7 +27,7 @@ class Lexer(object):
             self.skip_ahead()
             return char
         except IndexError:
-            raise EndOfFileException()
+            raise exceptions.EndOfFileException()
 
     def back_up(self):
         self.char_pos -= 1
@@ -57,7 +50,7 @@ class Lexer(object):
         while True:
             try:
                 char = self.get_char()
-            except EndOfFileException:
+            except exceptions.EndOfFileException:
                 if self.current_token is not None:
                     self.push_token()
                 return self.tokens
@@ -69,7 +62,7 @@ class Lexer(object):
                     self.tokens.append(tokens.LineTerminatorToken())
                 elif char == '*' and self.next_char == '/':
                     if not self.in_block_comment:
-                        raise ParseError(
+                        raise exceptions.ParseError(
                             "Ending block comment token unexpected.")
                     self.in_block_comment = False
                     self.skip_ahead()
@@ -111,7 +104,6 @@ class Lexer(object):
                     self.in_line_comment = True
                     self.skip_ahead()
                 elif char == '/' and self.next_char == '*':
-                    print 'come on'
                     self.in_block_comment = True
                     self.skip_ahead()
                 elif char == '/':
@@ -158,7 +150,7 @@ class Lexer(object):
             elif isinstance(self.current_token, tokens.NumberLiteralToken):
                 if char in string.digits or char == '.':
                     if '.' in self.current_token.body:
-                        raise ParseError("Second . found in number")
+                        raise exceptions.ParseError("Second . found in number")
                     self.push_char(char)
                 else:
                     self.push_token()

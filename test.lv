@@ -1,8 +1,8 @@
-heyhey = 99
 
 menu = {
     tacos: 10, burritos: 20
 }
+
 
 specials = ['twelve', 'thirteen', 'five']
 
@@ -30,5 +30,20 @@ specials_txt = ''
 cows = 0
 for y in specials
     cows = cows + 1
+end for
 
-menu['empanadas'] = menu.tacos + menu.burritos
+
+add_it = function() {
+    return menu.tacos + menu.burritos
+}
+
+
+/*
+while true
+    1
+end while
+*/
+
+menu['empanadas'] = add_it()
+menu['printed'] = print('test')
+# result = print('test')

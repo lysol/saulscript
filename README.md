@@ -11,13 +11,13 @@ To-do:
 - [x] Assignemnt Operators
 - [x] Data structures
 - [x] The other random things I completed before I made this list
-- [ ] Print statements (most people probably do this first but ¯\\\_(ツ)_/¯)
+- [X] Print statements (most people probably do this first but ¯\\\_(ツ)_/¯)
 - [x] Function invocations (doing this first because the logic for context-binding needs to be done)
 - [x] Function declaration
-- [ ] Loops
-- [ ] Operation counting
-- [ ] Resource limits
-- [ ] Time limits
+- [X] Loops
+- [x] Operation counting
+- [x] Resource limits
+- [x] Time limits
 - [ ] Move to Cython?
 
 I named this thing after my pet rabbit

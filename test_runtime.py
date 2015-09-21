@@ -1,5 +1,6 @@
-from runtime import Runtime
-from lexer import *
+import saulscript
+from saulscript.runtime import Runtime
+from saulscript.lexer import *
 import sys
 import logging
 

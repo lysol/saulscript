@@ -1,5 +1,6 @@
-from lexer import *
-from ast import *
+import saulscript
+from saulscript.lexer import *
+from saulscript.ast import *
 import sys
 
 body = open(sys.argv[1], 'r').read()

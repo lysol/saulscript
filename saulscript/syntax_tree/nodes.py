@@ -1,16 +1,8 @@
 from decimal import Decimal
-from context import Context
 import operator
 import logging
-import ast
-
-
-class ReturnRequestedException(Exception):
-    pass
-
-
-class ObjectResolutionError(Exception):
-    pass
+from .. import exceptions
+from ..runtime.context import Context
 
 
 class Node(object):
@@ -25,6 +17,7 @@ class Node(object):
 class NopNode(Node):
 
     def reduce(self, context):
+        context.increment_operations()
         return None
 
     def __repr__(self):
@@ -40,6 +33,7 @@ class LiteralNode(Node):
         return '{%s}' % self.value
 
     def reduce(self, context):
+        context.increment_operations()
         return self.value
 
 
@@ -59,15 +53,11 @@ class Branch(list):
         for node in self:
             try:
                 node.reduce(context)
-            except ReturnRequestedException:
+            except exceptions.ReturnRequestedException:
                 break
-            except ast.EndContextExecution:
+            except exceptions.EndContextExecution:
                 break
         return context.return_value
-
-
-class SaulRuntimeError(Exception):
-    pass
 
 
 class IfNode(Node):
@@ -92,6 +82,7 @@ class IfNode(Node):
             (self.condition, self.then_branch, self.else_branch)
 
     def reduce(self, context):
+        context.increment_operations()
         result = self.condition.reduce(context)
         logging.debug("If result: %s", result)
         if result:
@@ -110,6 +101,7 @@ class WhileNode(Node):
         return "<while %s: %s>" % (self.condition, self.branch)
 
     def reduce(self, context):
+        context.increment_operations()
         logging.debug("Running while loop")
         while True:
             result = self.condition.reduce(context)
@@ -128,9 +120,11 @@ class ForNode(Node):
         self.branch = branch
 
     def __repr__(self):
-        return "<for %s in %s: %s>" % (self.local_name, self.iterable, self.branch)
+        return "<for %s in %s: %s>" % \
+            (self.local_name, self.iterable, self.branch)
 
     def reduce(self, context):
+        context.increment_operations()
         logging.debug("Running for loop")
         for item in self.iterable.reduce(context):
             # same as python. variable is set in the outer context
@@ -148,6 +142,7 @@ class UnaryOpNode(Node):
             "Please define the operation of this operator")
 
     def reduce(self, context):
+        context.increment_operations()
         logging.debug("%s %s", self.__class__, type(self.target))
         return self.operation(self.target.reduce(context), context)
 
@@ -162,6 +157,7 @@ class BinaryOpNode(Node):
         self.right = right
 
     def reduce(self, context):
+        context.increment_operations()
         logging.debug("%s %s %s",
                       self.__class__, type(self.left),
                       type(self.right))
@@ -210,11 +206,18 @@ class ExponentNode(BinaryOpNode):
 class AssignmentNode(BinaryOpNode):
 
     def reduce(self, context):
+        context.increment_operations()
         logging.debug("AssignmentNode: I am a %s" % self)
         logging.debug("AssignmentNode: %s %s", self.left, self.right)
         result = self.right.reduce(context)
         logging.debug("Assignment result: %s" % result)
-        context[self.left.name] = result
+        if not isinstance(self.left, SubscriptNotationNode):
+            context[self.left.name] = result
+        else:
+            # This dict member doesn't exist yet, set it.
+            subscript = self.left
+            # context[object.name][stuff in []] = our right result
+            context[subscript.left.name][subscript.right.value] = result
 
 
 class ComparisonNode(BinaryOpNode):
@@ -260,6 +263,7 @@ class NumberNode(LiteralNode):
         self.value = Decimal(number_string)
 
     def reduce(self, context):
+        context.increment_operations()
         return self.value
 
 
@@ -270,12 +274,14 @@ class StringNode(LiteralNode):
         super(StringNode, self).__init__(string)
 
     def reduce(self, context):
+        context.increment_operations()
         return self.value
 
 
 class VariableNode(LiteralNode):
 
     def reduce(self, context):
+        context.increment_operations()
         if self.name in context:
             return context[self.name]
         else:
@@ -291,13 +297,20 @@ class BooleanNode(Node):
     def __init__(self, value):
         self.value = value
 
+    def reduce(self, context):
+        return bool(self.value)
+
 
 class SubscriptNotationNode(BinaryOpNode):
 
     def reduce(self, context):
+        context.increment_operations()
         logging.debug("Reducing subscript notation")
-        if not isinstance(self.left, DictionaryNode) and not isinstance(self.left, ListNode):
-            raise SaulRuntimeError("Subscript notation must be used with a list or dictionary (Got %s)" % self.left.__class__)
+        if not isinstance(self.left, DictionaryNode) and \
+                not isinstance(self.left, ListNode):
+            raise exceptions.SaulRuntimeError(
+                "Subscript notation must be used with a "
+                "list or dictionary (Got %s)" % self.left.__class__)
         index = self.right.reduce(context)
         return self.left.reduce()[index]
 
@@ -305,14 +318,18 @@ class SubscriptNotationNode(BinaryOpNode):
 class DotNotationNode(BinaryOpNode):
 
     def reduce(self, context):
+        context.increment_operations()
         logging.debug("Resolving dot notation")
         dictthing = self.left.reduce(context)
         if type(dictthing) != dict:
-            raise SaulRuntimeError("Dot notation used with non-dictionary: %s" % dictthing)
+            raise exceptions.SaulRuntimeError(
+                "Dot notation used with non-dictionary: %s" %
+                dictthing)
         try:
             return dictthing[self.right.name]
         except KeyError:
-            raise SaulRuntimeError("No key named %s in %s" % (self.right.name, dictthing))
+            raise exceptions.SaulRuntimeError("No key named %s in %s" %
+                                              (self.right.name, dictthing))
 
 
 class DictionaryNode(dict):
@@ -321,11 +338,13 @@ class DictionaryNode(dict):
         super(DictionaryNode, self).__init__(*args, **kwargs)
 
     def reduce(self, context):
+        context.increment_operations()
         logging.debug("Reducing dictionary")
         return {k: self[k].reduce(context) for k in self}
 
     def __repr__(self):
-        return "{%s}" % ", ".join(["%s: %s" % (k, v) for k, v in self.iteritems()])
+        return "{%s}" % ", ".join(
+            ["%s: %s" % (k, v) for k, v in self.iteritems()])
 
     def __str__(self):
         return self.__repr__()
@@ -334,6 +353,7 @@ class DictionaryNode(dict):
 class ListNode(list):
 
     def reduce(self, context):
+        context.increment_operations()
         return [item.reduce(context) for item in self]
 
     def get_node(self):
@@ -342,28 +362,62 @@ class ListNode(list):
 
 class FunctionNode(Node):
 
-    def __init__(self, signature=[], branch=Branch(), context={}):
-        self.context = context
+    def __init__(self, signature=[], branch=Branch()):
         self.branch = branch
         self.signature = signature
 
     def reduce(self, context):
+        context.increment_operations()
+
         def closure(*args):
-            # Copy the function's context so assignments are thrown away when done
+            # Copy the function's context so assignments
+            # are thrown away when done
             execution_context = Context()
-            execution_context.update(self.context) 
-            # include the function arguments in the current execution context
+            execution_context.update(context)
+            logging.debug("This function's execution context is %s" %
+                          execution_context)
+            # include the function arguments
+            # in the current execution context
             for index, name_identifier in enumerate(self.signature):
-                # grab the argument from the invocation's argument list, reduce each of them,
-                # and set the execution context item that corresponds to this function's signature
+                # grab the argument from the invocation's
+                # argument list, reduce each of them,
+                # and set the execution context item that
+                # corresponds to this function's signature
                 try:
-                    execution_context[name_identifier] = args[index].reduce(context)
+                    execution_context[name_identifier] = \
+                        args[index].reduce(context)
                 except IndexError:
-                    raise SaulRuntimeError("Not enough arguments supplied.")
+                    raise exceptions.SaulRuntimeError(
+                        "Not enough arguments supplied.")
             # execute the branch
             return_node = self.branch.execute(execution_context)
+            # add the result here
+            context.increment_operations(execution_context.operations_counted)
             return return_node
+        logging.debug("Returning closure")
         return closure
+
+    def __str__(self):
+        arglist = ", ".join(self.signature)
+        return "<function(%s) %s>" % (arglist, self.branch)
+
+    def __repr__(self):
+        return self.__str__()
+
+
+class BoundFunctionNode(Node):
+
+    def __init__(self, func):
+        self.func = func
+
+    def reduce(self, context):
+        context.increment_operations()
+        logging.debug("Reducing bound function")
+
+        def _func(*_args):
+            args = [arg.reduce(context) for arg in _args]
+            return self.func(*args)
+        return _func
 
 
 class ReturnNode(Node):
@@ -372,8 +426,12 @@ class ReturnNode(Node):
         self.return_node = return_node
 
     def reduce(self, context):
+        context.increment_operations()
         context.set_return_value(self.return_node.reduce(context))
-        raise ReturnRequestedException()
+        raise exceptions.ReturnRequestedException()
+
+    def __repr__(self):
+        return '<return %s>' % self.return_node
 
 
 class InvocationNode(Node):
@@ -383,10 +441,16 @@ class InvocationNode(Node):
         self.arg_list = arg_list
 
     def reduce(self, context):
+        context.increment_operations()
         if self.callable_name not in context:
             raise NameError("%s is not defined" % self.callable_name)
         callable_item = context[self.callable_name]
+        logging.debug("Checking %s to see if it is callable" % callable_item)
         if not callable(callable_item):
-            raise SaulRuntimeError("%s is not callable" % callable_item)
+            raise exceptions.SaulRuntimeError("%s is not callable" %
+                                              callable_item)
         return callable_item(*self.arg_list)
 
+    def __repr__(self):
+        arglist = ", ".join([repr(a) for a in self.arg_list])
+        return '<invoke %s(%s)>' % (self.callable_name, arglist)

@@ -1,4 +1,4 @@
-from lexer import *
+from saulscript.lexer import *
 import sys
 
 

@@ -1,6 +1,5 @@
-import ast
-import ast.nodes
-import lexer
+from ..syntax_tree import nodes
+
 
 class Token(object):
 
@@ -66,6 +65,7 @@ class IdentifierToken(Token):
     def __str__(self):
         return self.__repr__()
 
+
 class LiteralToken(Token):
     pass
 
@@ -128,7 +128,7 @@ class StringLiteralToken(LiteralToken):
 class AssignmentOperatorToken(BinaryOperatorToken):
 
     def get_node(self, left, right):
-        return ast.nodes.AssignmentNode(left, right)
+        return nodes.AssignmentNode(left, right)
 
     def __init__(self):
         super(AssignmentOperatorToken, self).__init__(14, '=',
@@ -138,7 +138,7 @@ class AssignmentOperatorToken(BinaryOperatorToken):
 class ComparisonOperatorToken(BinaryOperatorToken):
 
     def get_node(self, left, right):
-        return ast.nodes.ComparisonNode(left, right)
+        return nodes.ComparisonNode(left, right)
 
     def __init__(self):
         super(ComparisonOperatorToken, self).__init__(7, '==')
@@ -147,7 +147,7 @@ class ComparisonOperatorToken(BinaryOperatorToken):
 class AdditionOperatorToken(BinaryOperatorToken):
 
     def get_node(self, left, right):
-        return ast.nodes.AdditionNode(left, right)
+        return nodes.AdditionNode(left, right)
 
     def __init__(self):
         super(AdditionOperatorToken, self).__init__(4, '+')
@@ -156,7 +156,7 @@ class AdditionOperatorToken(BinaryOperatorToken):
 class SubtractionOperatorToken(BinaryOperatorToken):
 
     def get_node(self, left, right):
-        return ast.nodes.SubtractionNode(left, right)
+        return nodes.SubtractionNode(left, right)
 
     def __init__(self):
         super(SubtractionOperatorToken, self).__init__(4, '-')
@@ -165,7 +165,7 @@ class SubtractionOperatorToken(BinaryOperatorToken):
 class NegationOperatorToken(UnaryOperatorToken):
 
     def get_node(self, target):
-        return ast.nodes.NegationNode(target)
+        return nodes.NegationNode(target)
 
     def __init__(self):
         super(NegationOperatorToken, self).__init__(2, 'u-',
@@ -175,7 +175,7 @@ class NegationOperatorToken(UnaryOperatorToken):
 class DivisionOperatorToken(BinaryOperatorToken):
 
     def get_node(self, left, right):
-        return ast.nodes.DivisionNode(left, right)
+        return nodes.DivisionNode(left, right)
 
     def __init__(self):
         super(DivisionOperatorToken, self).__init__(3, '/')
@@ -184,7 +184,7 @@ class DivisionOperatorToken(BinaryOperatorToken):
 class MultiplicationOperatorToken(BinaryOperatorToken):
 
     def get_node(self, left, right):
-        return ast.nodes.MultiplicationNode(left, right)
+        return nodes.MultiplicationNode(left, right)
 
     def __init__(self):
         super(MultiplicationOperatorToken, self).__init__(3, '*')
@@ -193,7 +193,7 @@ class MultiplicationOperatorToken(BinaryOperatorToken):
 class ExponentOperatorToken(BinaryOperatorToken):
 
     def get_node(self, left, right):
-        return ast.nodes.ExponentNode(left, right)
+        return nodes.ExponentNode(left, right)
 
     def __init__(self):
         super(ExponentOperatorToken, self).__init__(2, '**',
@@ -203,7 +203,7 @@ class ExponentOperatorToken(BinaryOperatorToken):
 class GreaterThanOperatorToken(BinaryOperatorToken):
 
     def get_node(self, left, right):
-        return ast.nodes.GreaterThanNode(left, right)
+        return nodes.GreaterThanNode(left, right)
 
     def __init__(self):
         super(GreaterThanOperatorToken, self).__init__(6, '>')
@@ -212,7 +212,7 @@ class GreaterThanOperatorToken(BinaryOperatorToken):
 class LessThanOperatorToken(BinaryOperatorToken):
 
     def get_node(self, left, right):
-        return ast.nodes.LessThanNode(left, right)
+        return nodes.LessThanNode(left, right)
 
     def __init__(self):
         super(LessThanOperatorToken, self).__init__(6, '<')
@@ -221,7 +221,7 @@ class LessThanOperatorToken(BinaryOperatorToken):
 class GreaterThanEqualOperatorToken(BinaryOperatorToken):
 
     def get_node(self, left, right):
-        return ast.nodes.GreaterThanEqualNode(left, right)
+        return nodes.GreaterThanEqualNode(left, right)
 
     def __init__(self):
         super(GreaterThanEqualOperatorToken, self).__init__(6, '>=')
@@ -230,7 +230,7 @@ class GreaterThanEqualOperatorToken(BinaryOperatorToken):
 class LessThanEqualOperatorToken(BinaryOperatorToken):
 
     def get_node(self, left, right):
-        return ast.nodes.LessThanEqualNode(left, right)
+        return nodes.LessThanEqualNode(left, right)
 
     def __init__(self):
         super(LessThanEqualOperatorToken, self).__init__(6, '<=')
@@ -239,7 +239,7 @@ class LessThanEqualOperatorToken(BinaryOperatorToken):
 class DotNotationOperatorToken(BinaryOperatorToken):
 
     def get_node(self, left, right):
-        return ast.nodes.DotNotationNode(left, right)
+        return nodes.DotNotationNode(left, right)
 
     def __init__(self):
         super(DotNotationOperatorToken, self).__init__(1, '.')
