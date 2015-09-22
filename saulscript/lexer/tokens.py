@@ -9,8 +9,9 @@ class Token(object):
     def show(self):
         return self.body
 
-    def __init__(self, body):
+    def __init__(self, line_num, body):
         self.body = body
+        self.line_num = line_num
 
     def __str__(self):
         return self.body
@@ -25,8 +26,8 @@ class Token(object):
 
 class LineTerminatorToken(Token):
 
-    def __init__(self):
-        super(LineTerminatorToken, self).__init__("\n")
+    def __init__(self, line_num):
+        super(LineTerminatorToken, self).__init__(line_num, "\n")
 
 
 class OperatorToken(Token):
@@ -38,11 +39,11 @@ class OperatorToken(Token):
         raise NotImplementedError(
             "Please define a type of node for this token to return")
 
-    def __init__(self, precedence, body, associativity=None, unary=False):
+    def __init__(self, line_num, precedence, body, associativity=None, unary=False):
         self.precedence = precedence
         self.associativity = associativity \
             if associativity is not None else self.LEFT
-        super(OperatorToken, self).__init__(body)
+        super(OperatorToken, self).__init__(line_num, body)
         self.unary = unary
 
 
@@ -56,8 +57,8 @@ class UnaryOperatorToken(OperatorToken):
 
 class IdentifierToken(Token):
 
-    def __init__(self, body):
-        super(IdentifierToken, self).__init__(body)
+    def __init__(self, line_num, body):
+        super(IdentifierToken, self).__init__(line_num, body)
 
     def __repr__(self):
         return "<Identifier: %s>" % self.body
@@ -72,51 +73,51 @@ class LiteralToken(Token):
 
 class LeftCurlyBraceToken(Token):
 
-    def __init__(self):
-        super(LeftCurlyBraceToken, self).__init__('{')
+    def __init__(self, line_num):
+        super(LeftCurlyBraceToken, self).__init__(line_num, '{')
 
 
 class RightCurlyBraceToken(Token):
 
-    def __init__(self):
-        super(RightCurlyBraceToken, self).__init__('}')
+    def __init__(self, line_num):
+        super(RightCurlyBraceToken, self).__init__(line_num, '}')
 
 
 class LeftSquareBraceToken(Token):
 
-    def __init__(self):
-        super(LeftSquareBraceToken, self).__init__('[')
+    def __init__(self, line_num):
+        super(LeftSquareBraceToken, self).__init__(line_num, '[')
 
 
 class RightSquareBraceToken(Token):
 
-    def __init__(self):
-        super(RightSquareBraceToken, self).__init__(']')
+    def __init__(self, line_num):
+        super(RightSquareBraceToken, self).__init__(line_num, ']')
 
 
 class ColonToken(Token):
 
-    def __init__(self):
-        super(ColonToken, self).__init__(':')
+    def __init__(self, line_num):
+        super(ColonToken, self).__init__(line_num, ':')
 
 
 class CommaToken(Token):
 
-    def __init__(self):
-        super(CommaToken, self).__init__(',')
+    def __init__(self, line_num):
+        super(CommaToken, self).__init__(line_num, ',')
 
 
 class NumberLiteralToken(LiteralToken):
 
-    def __init__(self, body=''):
-        super(NumberLiteralToken, self).__init__(body)
+    def __init__(self, line_num, body=''):
+        super(NumberLiteralToken, self).__init__(line_num, body)
 
 
 class StringLiteralToken(LiteralToken):
 
-    def __init__(self, body, delimiter="'"):
+    def __init__(self, line_num, body, delimiter="'"):
         self.delimiter = delimiter
-        super(StringLiteralToken, self).__init__(body)
+        super(StringLiteralToken, self).__init__(line_num, body)
 
     def show(self):
         return '"%s"' % (self.body.replace('"', '\\"'))
@@ -130,8 +131,8 @@ class AssignmentOperatorToken(BinaryOperatorToken):
     def get_node(self, line_num, left, right):
         return nodes.AssignmentNode(line_num, left, right)
 
-    def __init__(self):
-        super(AssignmentOperatorToken, self).__init__(14, '=',
+    def __init__(self, line_num):
+        super(AssignmentOperatorToken, self).__init__(line_num, 14, '=',
                                                       OperatorToken.RIGHT)
 
 
@@ -140,8 +141,8 @@ class ComparisonOperatorToken(BinaryOperatorToken):
     def get_node(self, line_num, left, right):
         return nodes.ComparisonNode(line_num, left, right)
 
-    def __init__(self):
-        super(ComparisonOperatorToken, self).__init__(7, '==')
+    def __init__(self, line_num):
+        super(ComparisonOperatorToken, self).__init__(line_num, 7, '==')
 
 
 class AdditionOperatorToken(BinaryOperatorToken):
@@ -149,8 +150,8 @@ class AdditionOperatorToken(BinaryOperatorToken):
     def get_node(self, line_num, left, right):
         return nodes.AdditionNode(line_num, left, right)
 
-    def __init__(self):
-        super(AdditionOperatorToken, self).__init__(4, '+')
+    def __init__(self, line_num):
+        super(AdditionOperatorToken, self).__init__(line_num, 4, '+')
 
 
 class SubtractionOperatorToken(BinaryOperatorToken):
@@ -158,8 +159,8 @@ class SubtractionOperatorToken(BinaryOperatorToken):
     def get_node(self, line_num, left, right):
         return nodes.SubtractionNode(line_num, left, right)
 
-    def __init__(self):
-        super(SubtractionOperatorToken, self).__init__(4, '-')
+    def __init__(self, line_num):
+        super(SubtractionOperatorToken, self).__init__(line_num, 4, '-')
 
 
 class NegationOperatorToken(UnaryOperatorToken):
@@ -167,8 +168,8 @@ class NegationOperatorToken(UnaryOperatorToken):
     def get_node(self, line_num, target):
         return nodes.NegationNode(line_num, target)
 
-    def __init__(self):
-        super(NegationOperatorToken, self).__init__(2, 'u-',
+    def __init__(self, line_num):
+        super(NegationOperatorToken, self).__init__(line_num, 2, 'u-',
                                                     OperatorToken.RIGHT, True)
 
 
@@ -177,8 +178,8 @@ class DivisionOperatorToken(BinaryOperatorToken):
     def get_node(self, line_num, left, right):
         return nodes.DivisionNode(line_num, left, right)
 
-    def __init__(self):
-        super(DivisionOperatorToken, self).__init__(3, '/')
+    def __init__(self, line_num):
+        super(DivisionOperatorToken, self).__init__(line_num, 3, '/')
 
 
 class MultiplicationOperatorToken(BinaryOperatorToken):
@@ -186,8 +187,8 @@ class MultiplicationOperatorToken(BinaryOperatorToken):
     def get_node(self, line_num, left, right):
         return nodes.MultiplicationNode(line_num, left, right)
 
-    def __init__(self):
-        super(MultiplicationOperatorToken, self).__init__(3, '*')
+    def __init__(self, line_num):
+        super(MultiplicationOperatorToken, self).__init__(line_num, 3, '*')
 
 
 class ExponentOperatorToken(BinaryOperatorToken):
@@ -195,8 +196,8 @@ class ExponentOperatorToken(BinaryOperatorToken):
     def get_node(self, line_num, left, right):
         return nodes.ExponentNode(line_num, left, right)
 
-    def __init__(self):
-        super(ExponentOperatorToken, self).__init__(2, '**',
+    def __init__(self, line_num):
+        super(ExponentOperatorToken, self).__init__(line_num, 2, '**',
                                                     OperatorToken.RIGHT)
 
 
@@ -205,8 +206,8 @@ class GreaterThanOperatorToken(BinaryOperatorToken):
     def get_node(self, line_num, left, right):
         return nodes.GreaterThanNode(line_num, left, right)
 
-    def __init__(self):
-        super(GreaterThanOperatorToken, self).__init__(6, '>')
+    def __init__(self, line_num):
+        super(GreaterThanOperatorToken, self).__init__(line_num, 6, '>')
 
 
 class LessThanOperatorToken(BinaryOperatorToken):
@@ -214,8 +215,8 @@ class LessThanOperatorToken(BinaryOperatorToken):
     def get_node(self, line_num, left, right):
         return nodes.LessThanNode(line_num, left, right)
 
-    def __init__(self):
-        super(LessThanOperatorToken, self).__init__(6, '<')
+    def __init__(self, line_num):
+        super(LessThanOperatorToken, self).__init__(line_num, 6, '<')
 
 
 class GreaterThanEqualOperatorToken(BinaryOperatorToken):
@@ -223,8 +224,8 @@ class GreaterThanEqualOperatorToken(BinaryOperatorToken):
     def get_node(self, line_num, left, right):
         return nodes.GreaterThanEqualNode(line_num, left, right)
 
-    def __init__(self):
-        super(GreaterThanEqualOperatorToken, self).__init__(6, '>=')
+    def __init__(self, line_num):
+        super(GreaterThanEqualOperatorToken, self).__init__(line_num, 6, '>=')
 
 
 class LessThanEqualOperatorToken(BinaryOperatorToken):
@@ -232,8 +233,8 @@ class LessThanEqualOperatorToken(BinaryOperatorToken):
     def get_node(self, line_num, left, right):
         return nodes.LessThanEqualNode(line_num, left, right)
 
-    def __init__(self):
-        super(LessThanEqualOperatorToken, self).__init__(6, '<=')
+    def __init__(self, line_num):
+        super(LessThanEqualOperatorToken, self).__init__(line_num, 6, '<=')
 
 
 class DotNotationOperatorToken(BinaryOperatorToken):
@@ -241,8 +242,8 @@ class DotNotationOperatorToken(BinaryOperatorToken):
     def get_node(self, line_num, left, right):
         return nodes.DotNotationNode(line_num, left, right)
 
-    def __init__(self):
-        super(DotNotationOperatorToken, self).__init__(1, '.')
+    def __init__(self, line_num):
+        super(DotNotationOperatorToken, self).__init__(line_num, 1, '.')
 
 
 class LeftParenToken(BinaryOperatorToken):
@@ -250,8 +251,8 @@ class LeftParenToken(BinaryOperatorToken):
     def get_node(self, line_num, left, right):
         assert False
 
-    def __init__(self):
-        super(LeftParenToken, self).__init__(1, '(')
+    def __init__(self, line_num):
+        super(LeftParenToken, self).__init__(line_num, 1, '(')
 
 
 class RightParenToken(BinaryOperatorToken):
@@ -259,5 +260,5 @@ class RightParenToken(BinaryOperatorToken):
     def get_node(self, line_num, left, right):
         assert False
 
-    def __init__(self):
-        super(RightParenToken, self).__init__(9, ')')
+    def __init__(self, line_num):
+        super(RightParenToken, self).__init__(line_num, 9, ')')

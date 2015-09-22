@@ -1,7 +1,7 @@
+import logging
 import string
 import tokens
 from .. import exceptions
-
 
 class Lexer(object):
 
@@ -13,6 +13,7 @@ class Lexer(object):
         self.in_escape = False
         self.in_line_comment = False
         self.in_block_comment = False
+        self.line_num = 1
 
     @property
     def next_char(self):
@@ -59,7 +60,9 @@ class Lexer(object):
                 # No current state
                 if char == '\n' and not self.in_block_comment:
                     self.in_line_comment = False
-                    self.tokens.append(tokens.LineTerminatorToken())
+                    self.tokens.append(tokens.LineTerminatorToken(self.line_num))
+                    self.line_num += 1
+                    logging.debug('Lexer increments line to %d' % self.line_num)
                 elif char == '*' and self.next_char == '/':
                     if not self.in_block_comment:
                         raise exceptions.ParseError(
@@ -67,38 +70,40 @@ class Lexer(object):
                     self.in_block_comment = False
                     self.skip_ahead()
                 elif self.in_line_comment or self.in_block_comment:
-                    # ignore whatever is here
+                    # ignore whatever is here, but increment line counter if needed
+                    if char == '\n':
+                        self.line_num += 1
                     continue
                 elif char in "'\"":
-                    self.current_token = tokens.StringLiteralToken('')
+                    self.current_token = tokens.StringLiteralToken(self.line_num, '')
                 elif char in string.digits or char == '.' and \
                         self.next_char in string.digits:
-                    self.current_token = tokens.NumberLiteralToken(char)
+                    self.current_token = tokens.NumberLiteralToken(self.line_num, char)
                 elif char in string.letters or char == '_':
-                    self.current_token = tokens.IdentifierToken(char)
+                    self.current_token = tokens.IdentifierToken(self.line_num, char)
                 elif char == '>':
                     if self.next_char == '=':
-                        self.save_token(tokens.GreaterThanEqualOperatorToken())
+                        self.save_token(tokens.GreaterThanEqualOperatorToken(self.line_num))
                         self.skip_ahead()
                     else:
-                        self.save_token(tokens.GreaterThanOperatorToken())
+                        self.save_token(tokens.GreaterThanOperatorToken(self.line_num))
                 elif char == '<':
                     if self.next_char == '=':
-                        self.save_token(tokens.LessThanEqualOperatorToken())
+                        self.save_token(tokens.LessThanEqualOperatorToken(self.line_num))
                         self.skip_ahead()
                     else:
-                        self.save_token(tokens.LessThanOperatorToken())
+                        self.save_token(tokens.LessThanOperatorToken(self.line_num))
                 elif char == '=':
                     if self.next_char == '=':
                         # comparison, not assignment
-                        self.save_token(tokens.ComparisonOperatorToken())
+                        self.save_token(tokens.ComparisonOperatorToken(self.line_num))
                         self.skip_ahead()
                     else:
-                        self.save_token(tokens.AssignmentOperatorToken())
+                        self.save_token(tokens.AssignmentOperatorToken(self.line_num))
                 elif char == '+':
-                    self.save_token(tokens.AdditionOperatorToken())
+                    self.save_token(tokens.AdditionOperatorToken(self.line_num))
                 elif char == '-':
-                    self.save_token(tokens.SubtractionOperatorToken())
+                    self.save_token(tokens.SubtractionOperatorToken(self.line_num))
                 elif char == '/' and self.next_char == '/':
                     # comment!
                     self.in_line_comment = True
@@ -107,33 +112,33 @@ class Lexer(object):
                     self.in_block_comment = True
                     self.skip_ahead()
                 elif char == '/':
-                    self.save_token(tokens.DivisionOperatorToken())
+                    self.save_token(tokens.DivisionOperatorToken(self.line_num))
                 elif char == '*':
                     if self.next_char == '*':
-                        self.save_token(tokens.ExponentOperatorToken())
+                        self.save_token(tokens.ExponentOperatorToken(self.line_num))
                         self.skip_ahead()
                     else:
-                        self.save_token(tokens.MultiplicationOperatorToken())
+                        self.save_token(tokens.MultiplicationOperatorToken(self.line_num))
                 elif char == '\\' and self.next_char == '\n':
                     # escaped line terminator
                     self.skip_ahead()
 
                 elif char == '(':
-                    self.save_token(tokens.LeftParenToken())
+                    self.save_token(tokens.LeftParenToken(self.line_num))
                 elif char == ')':
-                    self.save_token(tokens.RightParenToken())
+                    self.save_token(tokens.RightParenToken(self.line_num))
                 elif char == '{':
-                    self.save_token(tokens.LeftCurlyBraceToken())
+                    self.save_token(tokens.LeftCurlyBraceToken(self.line_num))
                 elif char == '}':
-                    self.save_token(tokens.RightCurlyBraceToken())
+                    self.save_token(tokens.RightCurlyBraceToken(self.line_num))
                 elif char == '[':
-                    self.save_token(tokens.LeftSquareBraceToken())
+                    self.save_token(tokens.LeftSquareBraceToken(self.line_num))
                 elif char == ']':
-                    self.save_token(tokens.RightSquareBraceToken())
+                    self.save_token(tokens.RightSquareBraceToken(self.line_num))
                 elif char == ':':
-                    self.save_token(tokens.ColonToken())
+                    self.save_token(tokens.ColonToken(self.line_num))
                 elif char == ',':
-                    self.save_token(tokens.CommaToken())
+                    self.save_token(tokens.CommaToken(self.line_num))
                 elif char in string.whitespace:
                     pass
             elif isinstance(self.current_token, tokens.StringLiteralToken):
@@ -162,7 +167,7 @@ class Lexer(object):
                 elif char == '.':
                     # object attribute resolution operator
                     self.push_token()
-                    self.save_token(tokens.DotNotationOperatorToken())
+                    self.save_token(tokens.DotNotationOperatorToken(self.line_num))
                 else:
                     self.push_token()
                     self.back_up()

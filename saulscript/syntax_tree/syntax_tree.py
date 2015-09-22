@@ -23,7 +23,9 @@ class SyntaxTree(object):
 
     def shift_token(self):
         try:
-            return self.tokens.pop(0)
+            token = self.tokens.pop(0)
+            self.line_num = token.line_num
+            return token
         except IndexError:
             raise exceptions.ParseError(self.line_num, "Unexpected end of input")
 
@@ -123,7 +125,6 @@ class SyntaxTree(object):
         data = nodes.ListNode()
         while isinstance(self.next_token, tokens.LineTerminatorToken):
             # ignore line breaks here until we see data
-            self.line_num += 1
             self.shift_token()
         while True:
             logging.debug("List looks like this now: %s", data)
@@ -363,7 +364,8 @@ class SyntaxTree(object):
                 token = self.next_token
                 logging.debug("Consider %s", token.__class__)
             except IndexError:
-                raise exceptions.OutOfTokens(self.line_num, 'During handle expression')
+                # didn't shift the token off yet so make sure the line num is accurate
+                raise exceptions.OutOfTokens(self.line_num + 1, 'During handle expression')
             if isinstance(token, tokens.IdentifierToken) or \
                     isinstance(token, tokens.LiteralToken):
                 if self.handler_exists(token):
@@ -473,7 +475,7 @@ class SyntaxTree(object):
         assert isinstance(while_token, tokens.IdentifierToken) and \
             while_token.body == 'while'
 
-        return nodes.WhileNode(condition, branch)
+        return nodes.WhileNode(self.line_num, condition, branch)
 
     def handle_identifier_for(self, token):
         logging.debug("Handling for loop")
