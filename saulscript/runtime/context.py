@@ -13,7 +13,6 @@ class Context(dict):
         self.time_limit = -1
         self.start_time = datetime.datetime.now()
         super(Context, self).__init__(self, *args, **kwargs)
-        print dir(self)
 
     def set_op_limit(self, num):
         self.operation_limit = num

@@ -7,7 +7,8 @@ from ..runtime.context import Context
 
 class Node(object):
 
-    def __init__(self):
+    def __init__(self, line_num):
+        self.line_num = line_num
         pass
 
     def __str__(self):
@@ -26,7 +27,8 @@ class NopNode(Node):
 
 class LiteralNode(Node):
 
-    def __init__(self, value):
+    def __init__(self, line_num, value):
+        super(LiteralNode, self).__init__(line_num)
         self.value = value
 
     def __repr__(self):
@@ -62,7 +64,7 @@ class Branch(list):
 
 class IfNode(Node):
 
-    def __init__(self, condition, then=[], else_branch=[]):
+    def __init__(self, line_num, condition, then=[], else_branch=[]):
         self.condition = condition
         if then == []:
             then = Branch([])
@@ -70,6 +72,7 @@ class IfNode(Node):
             else_branch = Branch([])
         self.then_branch = then
         self.else_branch = else_branch
+        super(IfNode, self).__init__(line_num)
 
     def add_then(self, then_statement):
         self.then_branch.append(then_statement)
@@ -93,9 +96,10 @@ class IfNode(Node):
 
 class WhileNode(Node):
 
-    def __init__(self, condition, branch=Branch()):
+    def __init__(self, line_num, condition, branch=Branch()):
         self.condition = condition
         self.branch = branch
+        super(WhileNode, self).__init__(line_num)
 
     def __repr__(self):
         return "<while %s: %s>" % (self.condition, self.branch)
@@ -114,10 +118,11 @@ class WhileNode(Node):
 
 class ForNode(Node):
 
-    def __init__(self, local_name, iterable, branch=Branch()):
+    def __init__(self, line_num, local_name, iterable, branch=Branch()):
         self.local_name = local_name
         self.iterable = iterable
         self.branch = branch
+        super(ForNode, self).__init__(line_num)
 
     def __repr__(self):
         return "<for %s in %s: %s>" % \
@@ -134,8 +139,9 @@ class ForNode(Node):
 
 class UnaryOpNode(Node):
 
-    def __init__(self, target):
+    def __init__(self, line_num, target):
         self.target = target
+        super(UnaryOpNode, self).__init__(line_num)
 
     def operation(self, target):
         raise NotImplementedError(
@@ -152,9 +158,10 @@ class UnaryOpNode(Node):
 
 class BinaryOpNode(Node):
 
-    def __init__(self, left, right):
+    def __init__(self, line_num, left, right):
         self.left = left
         self.right = right
+        super(BinaryOpNode, self).__init__(line_num)
 
     def reduce(self, context):
         context.increment_operations()
@@ -259,8 +266,9 @@ class NegationNode(UnaryOpNode):
 
 class NumberNode(LiteralNode):
 
-    def __init__(self, number_string):
+    def __init__(self, line_num, number_string):
         self.value = Decimal(number_string)
+        self.line_num = line_num
 
     def reduce(self, context):
         context.increment_operations()
@@ -269,9 +277,9 @@ class NumberNode(LiteralNode):
 
 class StringNode(LiteralNode):
 
-    def __init__(self, string):
+    def __init__(self, line_num, string):
         logging.debug("Assigning '%s' to %s" % (string, self.__class__))
-        super(StringNode, self).__init__(string)
+        super(StringNode, self).__init__(line_num, string)
 
     def reduce(self, context):
         context.increment_operations()
@@ -287,15 +295,15 @@ class VariableNode(LiteralNode):
         else:
             raise NameError("No variable named %s" % self.name)
 
-    def __init__(self, name):
+    def __init__(self, line_num, name):
         self.name = name
-        self.value = name
-
+        super(VariableNode, self).__init__(line_num, name)
 
 class BooleanNode(Node):
 
-    def __init__(self, value):
+    def __init__(self, line_num, value):
         self.value = value
+        super(BooleanNode, self).__init__(line_num)
 
     def reduce(self, context):
         return bool(self.value)
@@ -308,7 +316,7 @@ class SubscriptNotationNode(BinaryOpNode):
         logging.debug("Reducing subscript notation")
         if not isinstance(self.left, DictionaryNode) and \
                 not isinstance(self.left, ListNode):
-            raise exceptions.SaulRuntimeError(
+            raise exceptions.SaulRuntimeError(self.line_num,
                 "Subscript notation must be used with a "
                 "list or dictionary (Got %s)" % self.left.__class__)
         index = self.right.reduce(context)
@@ -322,19 +330,21 @@ class DotNotationNode(BinaryOpNode):
         logging.debug("Resolving dot notation")
         dictthing = self.left.reduce(context)
         if type(dictthing) != dict:
-            raise exceptions.SaulRuntimeError(
+            raise exceptions.SaulRuntimeError(self.line_num,
                 "Dot notation used with non-dictionary: %s" %
                 dictthing)
         try:
             return dictthing[self.right.name]
         except KeyError:
-            raise exceptions.SaulRuntimeError("No key named %s in %s" %
+            raise exceptions.SaulRuntimeError(self.line_num,
+                                              "No key named %s in %s" %
                                               (self.right.name, dictthing))
 
 
 class DictionaryNode(dict):
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, line_num, *args, **kwargs):
+        self.line_num = line_num
         super(DictionaryNode, self).__init__(*args, **kwargs)
 
     def reduce(self, context):
@@ -362,9 +372,10 @@ class ListNode(list):
 
 class FunctionNode(Node):
 
-    def __init__(self, signature=[], branch=Branch()):
+    def __init__(self, line_num, signature=[], branch=Branch()):
         self.branch = branch
         self.signature = signature
+        super(FunctionNode, self).__init__(line_num)
 
     def reduce(self, context):
         context.increment_operations()
@@ -387,7 +398,7 @@ class FunctionNode(Node):
                     execution_context[name_identifier] = \
                         args[index].reduce(context)
                 except IndexError:
-                    raise exceptions.SaulRuntimeError(
+                    raise exceptions.SaulRuntimeError(self.line_num,
                         "Not enough arguments supplied.")
             # execute the branch
             return_node = self.branch.execute(execution_context)
@@ -407,8 +418,9 @@ class FunctionNode(Node):
 
 class BoundFunctionNode(Node):
 
-    def __init__(self, func):
+    def __init__(self, line_num, func):
         self.func = func
+        super(BoundFunctionNode, self).__init__(line_num)
 
     def reduce(self, context):
         context.increment_operations()
@@ -422,13 +434,14 @@ class BoundFunctionNode(Node):
 
 class ReturnNode(Node):
 
-    def __init__(self, return_node):
+    def __init__(self, line_num, return_node):
         self.return_node = return_node
+        super(ReturnNode, self).__init__(line_num)
 
     def reduce(self, context):
         context.increment_operations()
         context.set_return_value(self.return_node.reduce(context))
-        raise exceptions.ReturnRequestedException()
+        raise exceptions.ReturnRequestedException(self.line_num)
 
     def __repr__(self):
         return '<return %s>' % self.return_node
@@ -436,9 +449,10 @@ class ReturnNode(Node):
 
 class InvocationNode(Node):
 
-    def __init__(self, callable_name, arg_list):
+    def __init__(self, line_num, callable_name, arg_list):
         self.callable_name = callable_name
         self.arg_list = arg_list
+        super(InvocationNode, self).__init__(line_num)
 
     def reduce(self, context):
         context.increment_operations()
@@ -447,7 +461,7 @@ class InvocationNode(Node):
         callable_item = context[self.callable_name]
         logging.debug("Checking %s to see if it is callable" % callable_item)
         if not callable(callable_item):
-            raise exceptions.SaulRuntimeError("%s is not callable" %
+            raise exceptions.SaulRuntimeError(self.line_num, "%s is not callable" %
                                               callable_item)
         return callable_item(*self.arg_list)
 

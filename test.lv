@@ -1,9 +1,9 @@
-
 menu = {
     tacos: 10, burritos: 20
 }
 
 
+/*
 specials = ['twelve', 'thirteen', 'five']
 
 example = function(arg,arg2) {
@@ -32,18 +32,17 @@ for y in specials
     cows = cows + 1
 end for
 
+while true
+    1
+end while
+*/
 
 add_it = function() {
     return menu.tacos + menu.burritos
 }
 
 
-/*
-while true
-    1
-end while
-*/
-
 menu['empanadas'] = add_it()
 menu['printed'] = print('test')
 # result = print('test')
+for but

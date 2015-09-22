@@ -19,10 +19,13 @@ class SyntaxTree(object):
         try:
             return self.tokens[0]
         except IndexError:
-            raise exceptions.OutOfTokens('at next token')
+            raise exceptions.OutOfTokens(self.line_num, 'at next token')
 
     def shift_token(self):
-        return self.tokens.pop(0)
+        try:
+            return self.tokens.pop(0)
+        except IndexError:
+            raise exceptions.ParseError(self.line_num, "Unexpected end of input")
 
     def unshift_token(self, item):
         return self.tokens.insert(0, item)
@@ -30,6 +33,7 @@ class SyntaxTree(object):
     def __init__(self, tokens):
         self.tokens = tokens
         self.tree = nodes.Branch([])
+        self.line_num = 0
 
     def is_identifier(self, token, body):
         return isinstance(token, tokens.IdentifierToken) and \
@@ -47,7 +51,7 @@ class SyntaxTree(object):
                 break
             except exceptions.EndContextExecution:
                 logging.error('Unexpected }')
-                raise exceptions.ParseError("Unexpected }")
+                raise exceptions.ParseError(self.line_num, "Unexpected }")
 
     def dump(self):
         for line_num, branch in enumerate(self.tree):
@@ -64,11 +68,11 @@ class SyntaxTree(object):
             if isinstance(token, tokens.CommaToken):
                 continue  # eat it
             if not isinstance(token, tokens.IdentifierToken):
-                raise exceptions.ParseError(
+                raise exceptions.ParseError(self.line_num,
                     "Expected an argument name, got %s" % token)
             sig_names.append(token.body)
         if not isinstance(self.next_token, tokens.LeftCurlyBraceToken):
-            raise exceptions.ParseError("Expected {, got %s" % self.next_token)
+            raise exceptions.ParseError(self.line_num, "Expected {, got %s" % self.next_token)
         self.shift_token()  # get rid of {
 
         new_branch = nodes.Branch()
@@ -78,17 +82,17 @@ class SyntaxTree(object):
             except exceptions.EndContextExecution:
                 # end of function declaration
                 break
-        func_node = nodes.FunctionNode(sig_names, new_branch)
+        func_node = nodes.FunctionNode(self.line_num, sig_names, new_branch)
         return func_node
 
     def handle_subscript_notation(self, variable_token):
         logging.debug("Handling a subscript notation")
         self.shift_token()  # get rid of [
         index_node = self.handle_operator_expression()  # ends before ]
-        sub_node = nodes.SubscriptNotationNode(
-            nodes.VariableNode(variable_token.body), index_node)
+        sub_node = nodes.SubscriptNotationNode(self.line_num, 
+            nodes.VariableNode(self.line_num, variable_token.body), index_node)
         if not isinstance(self.next_token, tokens.RightSquareBraceToken):
-            raise exceptions.ParseError(
+            raise exceptions.ParseError(self.line_num,
                 "Unexpected %s during subscript notation parse" %
                 self.next_token)
         self.shift_token()
@@ -111,7 +115,7 @@ class SyntaxTree(object):
                 self.shift_token()
                 continue
         logging.debug("Done reading arguments")
-        return nodes.InvocationNode(name_token.body, arg_tokens)
+        return nodes.InvocationNode(self.line_num, name_token.body, arg_tokens)
 
     def handle_list_expression(self):
         logging.debug("Handling a list expression")
@@ -119,6 +123,7 @@ class SyntaxTree(object):
         data = nodes.ListNode()
         while isinstance(self.next_token, tokens.LineTerminatorToken):
             # ignore line breaks here until we see data
+            self.line_num += 1
             self.shift_token()
         while True:
             logging.debug("List looks like this now: %s", data)
@@ -138,11 +143,12 @@ class SyntaxTree(object):
     def handle_dictionary_expression(self):
         logging.debug("Handling a dictionary expression")
         self.shift_token()  # get rid of {
-        data = nodes.DictionaryNode()
+        data = nodes.DictionaryNode(self.line_num)
         while True:
             name = self.shift_token()
             if isinstance(name, tokens.LineTerminatorToken):
                 # So, we can have whitespace after a {
+                self.line_num += 1
                 continue
             if isinstance(name, tokens.RightCurlyBraceToken):
                 # done with this dictionary since we got a }
@@ -150,11 +156,12 @@ class SyntaxTree(object):
             if not isinstance(name, tokens.IdentifierToken) and \
                 not isinstance(name, tokens.NumberLiteralToken) and \
                     not isinstance(name, tokens.StringLiteralToken):
-                raise exceptions.ParseError("Expected a name, got %s (%s)" %
+                raise exceptions.ParseError(self.line_num,
+                                            "Expected a name, got %s (%s)" %
                                             (name, name.__class__))
             colon = self.shift_token()
             if not isinstance(colon, tokens.ColonToken):
-                raise exceptions.ParseError("Expected a colon")
+                raise exceptions.ParseError(self.line_num, "Expected a colon")
             # Goes until the end of a line. No comma needed!
             expression = self.handle_operator_expression()
             if expression is not None:
@@ -207,6 +214,8 @@ class SyntaxTree(object):
                     isinstance(token, tokens.CommaToken):
                 logging.debug(
                     'encountered a line terminator, comma, or }, break it out')
+                if isinstance(token, tokens.LineTerminatorToken):
+                    self.line_num += 1
                 break
             if (prev_token is None or
                 isinstance(prev_token, tokens.OperatorToken)) and \
@@ -219,7 +228,7 @@ class SyntaxTree(object):
                 msg = "Expected an operator, literal, or identifier. (Got %s: %s)" % \
                     (token.__class__, token.body)
                 logging.error(msg)
-                raise exceptions.ParseError(msg)
+                raise exceptions.ParseError(self.line_num, msg)
             if isinstance(token, nodes.Node) or not \
                     isinstance(token, tokens.OperatorToken):
                 # If anything is a node, append it
@@ -311,12 +320,12 @@ class SyntaxTree(object):
                     except IndexError:
                         logging.error("Encountered IndexError. Tree stack: %s",
                                       tree_stack)
-                        raise exceptions.ParseError()
-                    tree_stack.append(token.get_node(left, right))
+                        raise exceptions.ParseError(self.line_num)
+                    tree_stack.append(token.get_node(self.line_num, left, right))
                 elif isinstance(token, tokens.UnaryOperatorToken):
                     logging.debug("%s is unary", token)
                     target = tree_stack.pop()
-                    tree_stack.append(token.get_node(target))
+                    tree_stack.append(token.get_node(self.line_num, target))
         logging.debug("%s" % tree_stack)
         if len(tree_stack) != 1:
             logging.error("Tree stack length is not 1. Contents: %s",
@@ -336,15 +345,15 @@ class SyntaxTree(object):
         elif isinstance(token, tokens.IdentifierToken):
             # variable?
             if token.body == 'true':
-                return nodes.BooleanNode(True)
+                return nodes.BooleanNode(self.line_num, True)
             elif token.body == 'false':
-                return nodes.BooleanNode(False)
+                return nodes.BooleanNode(self.line_num, False)
             logging.debug("Deciding that %s is a variable" % token)
-            return nodes.VariableNode(token.body)
+            return nodes.VariableNode(self.line_num, token.body)
         elif isinstance(token, tokens.NumberLiteralToken):
-            return nodes.NumberNode(token.body)
+            return nodes.NumberNode(self.line_num, token.body)
         elif isinstance(token, tokens.StringLiteralToken):
-            return nodes.StringNode(token.body)
+            return nodes.StringNode(self.line_num, token.body)
         assert "Unexpected token: %s (%s)" % (token, token.__class__)
 
     def handle_expression(self):
@@ -354,7 +363,7 @@ class SyntaxTree(object):
                 token = self.next_token
                 logging.debug("Consider %s", token.__class__)
             except IndexError:
-                raise exceptions.OutOfTokens('During handle expression')
+                raise exceptions.OutOfTokens(self.line_num, 'During handle expression')
             if isinstance(token, tokens.IdentifierToken) or \
                     isinstance(token, tokens.LiteralToken):
                 if self.handler_exists(token):
@@ -363,12 +372,13 @@ class SyntaxTree(object):
                     return self.handle_operator_expression()
             elif isinstance(token, tokens.LineTerminatorToken):
                 logging.debug("Delete this infernal line terminator")
+                self.line_num += 1
                 self.shift_token()
-                return nodes.NopNode()
+                return nodes.NopNode(self.line_num)
             elif isinstance(token, tokens.RightCurlyBraceToken):
                 logging.debug("Found }, beat it")
                 self.shift_token()
-                raise exceptions.EndContextExecution()
+                raise exceptions.EndContextExecution(self.line_num)
 
     def handler_exists(self, token):
         logging.debug("* Checking if there is a handler for %s" % token)
@@ -394,9 +404,9 @@ class SyntaxTree(object):
             except exceptions.EndContextExecution:
                 logging.error("There shouldn't be a } here "
                               "because we're in an if statement")
-                raise exceptions.ParseError("Unexpected }")
+                raise exceptions.ParseError(self.line_num, "Unexpected }")
             except exceptions.OutOfTokens:
-                raise exceptions.SaulRuntimeError(
+                raise exceptions.SaulRuntimeError(self.line_num,
                     "Unexpected end of file during if statement")
 
         if isinstance(self.next_token, tokens.IdentifierToken) and \
@@ -411,9 +421,9 @@ class SyntaxTree(object):
                 except exceptions.EndContextExecution:
                     logging.error("There shouldn't be a } here "
                                   "because we're in an if statement")
-                    raise exceptions.ParseError("Unexpected }")
+                    raise exceptions.ParseError(self.line_num, "Unexpected }")
                 except exceptions.OutOfTokens:
-                    raise exceptions.SaulRuntimeError(
+                    raise exceptions.SaulRuntimeError(self.line_num,
                         "Unexpected end of file during if statement")
         end_token = self.shift_token()
         if_token = self.shift_token()
@@ -424,22 +434,22 @@ class SyntaxTree(object):
         assert isinstance(if_token, tokens.IdentifierToken) and \
             if_token.body == 'if'
 
-        return nodes.IfNode(condition, then_branch, else_branch)
+        return nodes.IfNode(self.line_num, condition, then_branch, else_branch)
 
     def handle_identifier_true(self, token):
         logging.debug("Encountered 'true'")
         assert token.value.lower() == 'true'
-        return nodes.BooleanNode(True)
+        return nodes.BooleanNode(self.line_num, True)
 
     def handle_identifier_false(self, token):
         logging.debug("Encountered 'false'")
         assert token.value.lower() == 'false'
-        return nodes.BooleanNode(False)
+        return nodes.BooleanNode(self.line_num, False)
 
     def handle_identifier_return(self, token):
         logging.debug("Handling return statement")
         return_node = self.handle_operator_expression()
-        return nodes.ReturnNode(return_node)
+        return nodes.ReturnNode(self.line_num, return_node)
 
     def handle_identifier_while(self, token):
         logging.debug("Handling while loop")
@@ -453,9 +463,9 @@ class SyntaxTree(object):
                 except exceptions.EndContextExecution:
                     logging.error("There shouldn't be a } here "
                                   "because we're in a while statement")
-                    raise exceptions.ParseError("Unexpected }")
+                    raise exceptions.ParseError(self.line_num, "Unexpected }")
         except exceptions.OutOfTokens:
-            raise exceptions.SaulRuntimeError("end while expected")
+            raise exceptions.SaulRuntimeError(self.line_num, "end while expected")
         end_token = self.shift_token()
         while_token = self.shift_token()
         assert isinstance(end_token, tokens.IdentifierToken) and \
@@ -470,13 +480,13 @@ class SyntaxTree(object):
 
         token = self.shift_token()
         if not isinstance(token, tokens.IdentifierToken):
-            raise exceptions.ParseError("Expected a name, got %s" % token)
+            raise exceptions.ParseError(self.line_num, "Expected a name, got %s" % token)
         var_name = token.body
 
         token = self.shift_token()
         if not isinstance(token, tokens.IdentifierToken) or \
                 token.body != 'in':
-            raise exceptions.ParseError("Expected 'in', got %s" % token)
+            raise exceptions.ParseError(self.line_num, "Expected 'in', got %s" % token)
 
         iterable = self.handle_operator_expression()
         logging.debug("The iterable is %s" % iterable)
@@ -493,9 +503,9 @@ class SyntaxTree(object):
                 except exceptions.EndContextExecution:
                     logging.error("There shouldn't be a } here"
                                   "because we're in a for loop")
-                    raise exceptions.ParseError("Unexpected }")
+                    raise exceptions.ParseError(self.line_num, "Unexpected }")
         except exceptions.OutOfTokens:
-            raise exceptions.SaulRuntimeError("end for expected")
+            raise exceptions.SaulRuntimeError(self.line_num, "end for expected")
         end_token = self.shift_token()
         for_token = self.shift_token()
         logging.debug("End token: %s, For token: %s" % (end_token, for_token))
@@ -505,4 +515,4 @@ class SyntaxTree(object):
             for_token.body == 'for'
 
         logging.debug("Returning for loop node")
-        return nodes.ForNode(var_name, iterable, branch)
+        return nodes.ForNode(self.line_num, var_name, iterable, branch)
