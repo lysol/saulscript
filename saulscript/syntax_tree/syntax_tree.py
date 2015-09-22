@@ -6,7 +6,7 @@ from ..lexer import tokens
 
 class SyntaxTree(object):
 
-    def execute(self, context, time_limit=3, op_limit=1000000):
+    def execute(self, context, time_limit=-1, op_limit=-1):
         context.set_op_limit(op_limit)
         context.set_time_limit(time_limit)
 

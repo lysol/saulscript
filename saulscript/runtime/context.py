@@ -56,12 +56,12 @@ class Context(dict):
             raise Exception("Must be string, decimal, dict, or list")
         self[name] = val
 
-    def execute(self, src):
+    def execute(self, src, op_limit=-1, time_limit=-1):
         new_lexer = Lexer(src)
         tokens = new_lexer.run()
         logging.debug("%s", tokens)
         st = SyntaxTree(Context, tokens)
         st.run()
-        st.execute(self)
+        st.execute(self, op_limit=op_limit, time_limit=time_limit)
         return True
 
