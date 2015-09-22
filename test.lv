@@ -46,4 +46,4 @@ add_it = function() {
 menu['empanadas'] = add_it()
 menu['printed'] = print('test')
 */
-# result = print('test')
+result = print('test')

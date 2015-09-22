@@ -1,6 +1,4 @@
-import saulscript
-from saulscript.runtime import Context
-from saulscript.lexer import *
+from saulscript import Context
 import sys
 import logging
 
