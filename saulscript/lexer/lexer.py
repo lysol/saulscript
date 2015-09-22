@@ -3,6 +3,7 @@ import string
 import tokens
 from .. import exceptions
 
+
 class Lexer(object):
 
     def __init__(self, src):

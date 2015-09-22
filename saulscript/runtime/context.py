@@ -1,6 +1,9 @@
 from decimal import Decimal
 import datetime
+import logging
 from .. import exceptions
+from ..syntax_tree import SyntaxTree
+from ..lexer import Lexer
 
 
 class Context(dict):
@@ -52,3 +55,13 @@ class Context(dict):
         if type(val) not in (str, Decimal, dict, list):
             raise Exception("Must be string, decimal, dict, or list")
         self[name] = val
+
+    def execute(self, src):
+        new_lexer = Lexer(src)
+        tokens = new_lexer.run()
+        logging.debug("%s", tokens)
+        st = SyntaxTree(Context, tokens)
+        st.run()
+        st.execute(self)
+        return True
+

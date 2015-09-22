@@ -2,8 +2,6 @@ from decimal import Decimal
 import operator
 import logging
 from .. import exceptions
-from ..runtime.context import Context
-
 
 class Node(object):
 
@@ -372,9 +370,10 @@ class ListNode(list):
 
 class FunctionNode(Node):
 
-    def __init__(self, line_num, signature=[], branch=Branch()):
+    def __init__(self, line_num, context_class, signature=[], branch=Branch()):
         self.branch = branch
         self.signature = signature
+        self.context_class = context_class
         super(FunctionNode, self).__init__(line_num)
 
     def reduce(self, context):
@@ -383,7 +382,7 @@ class FunctionNode(Node):
         def closure(*args):
             # Copy the function's context so assignments
             # are thrown away when done
-            execution_context = Context()
+            execution_context = self.context_class()
             execution_context.update(context)
             logging.debug("This function's execution context is %s" %
                           execution_context)

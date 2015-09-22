@@ -1,7 +1,7 @@
 import logging
 import nodes
-from ..lexer import tokens
 from .. import exceptions
+from ..lexer import tokens
 
 
 class SyntaxTree(object):
@@ -32,10 +32,11 @@ class SyntaxTree(object):
     def unshift_token(self, item):
         return self.tokens.insert(0, item)
 
-    def __init__(self, tokens):
+    def __init__(self, context_class, tokens):
         self.tokens = tokens
         self.tree = nodes.Branch([])
         self.line_num = 0
+        self.context_class = context_class
 
     def is_identifier(self, token, body):
         return isinstance(token, tokens.IdentifierToken) and \
@@ -84,7 +85,7 @@ class SyntaxTree(object):
             except exceptions.EndContextExecution:
                 # end of function declaration
                 break
-        func_node = nodes.FunctionNode(self.line_num, sig_names, new_branch)
+        func_node = nodes.FunctionNode(self.line_num, self.context_class, sig_names, new_branch)
         return func_node
 
     def handle_subscript_notation(self, variable_token):

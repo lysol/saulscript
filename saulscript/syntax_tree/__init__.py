@@ -1,2 +1,2 @@
-from .syntax_tree import SyntaxTree
 import nodes
+from .syntax_tree import SyntaxTree
