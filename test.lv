@@ -1,9 +1,10 @@
+/*
 menu = {
     tacos: 10, burritos: 20
 }
 
 
-/*
+
 specials = ['twelve', 'thirteen', 'five']
 
 example = function(arg,arg2) {
@@ -35,7 +36,7 @@ end for
 while true
     1
 end while
-*/
+
 
 add_it = function() {
     return menu.tacos + menu.burritos
@@ -44,4 +45,5 @@ add_it = function() {
 
 menu['empanadas'] = add_it()
 menu['printed'] = print('test')
+*/
 # result = print('test')

@@ -1,6 +1,9 @@
 
 class SaulException(Exception):
 
+    def __str__(self):
+        return self.__repr__()
+
     def __repr__(self):
         base_repr = super(SaulException, self).__repr__()
         return "%s at line %d" % (base_repr, self.line_num)
@@ -44,3 +47,15 @@ class OperationLimitReached(SaulException):
 
 class TimeLimitReached(SaulException):
     pass
+
+
+class UnexpectedCharacter(SaulException):
+
+    def __init__(self, line_num, char, *args, **kwargs):
+        self.char = char
+        super(UnexpectedCharacter, self).__init__(line_num, *args, **kwargs)
+        self.message = self.__repr__()
+
+    def __repr__(self):
+        return 'Unexpected character (%s) at line %d' % \
+            (self.char, self.line_num)
