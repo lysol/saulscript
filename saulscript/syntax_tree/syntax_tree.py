@@ -332,7 +332,8 @@ class SyntaxTree(object):
         if len(tree_stack) != 1:
             logging.error("Tree stack length is not 1. Contents: %s",
                           tree_stack)
-        assert len(tree_stack) == 1
+        if len(tree_stack) != 1:
+            raise exceptions.ParseError(self.line_num)
 
         logging.debug('The final tree leaf: %s', tree_stack[0])
         return tree_stack.pop()  # -----------===============#################*
