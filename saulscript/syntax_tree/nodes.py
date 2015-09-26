@@ -318,12 +318,13 @@ class SubscriptNotationNode(BinaryOpNode):
                 "Subscript notation must be used with a "
                 "list or dictionary (Got %s)" % self.left.__class__)
         index = self.right.reduce(context)
-        return self.left.reduce()[index]
+        return self.left.reduce(context)[index]
 
 
 class DotNotationNode(BinaryOpNode):
 
     def reduce(self, context):
+        logging.debug("Context: ", context)
         context.increment_operations()
         logging.debug("Resolving dot notation")
         dictthing = self.left.reduce(context)
@@ -380,6 +381,7 @@ class FunctionNode(Node):
         context.increment_operations()
 
         def closure(*args):
+            context.reset_start_time()
             # Copy the function's context so assignments
             # are thrown away when done
             execution_context = self.context_class()
@@ -399,6 +401,8 @@ class FunctionNode(Node):
                 except IndexError:
                     raise exceptions.SaulRuntimeError(self.line_num,
                         "Not enough arguments supplied.")
+                except AttributeError:
+                    execution_context[name_identifier] = args[index]
             # execute the branch
             return_node = self.branch.execute(execution_context)
             # add the result here

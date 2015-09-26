@@ -41,12 +41,14 @@ class SaulRuntimeError(SaulException):
     pass
 
 
-class OperationLimitReached(SaulException):
+class OperationLimitReached(Exception):
     pass
 
 
-class TimeLimitReached(SaulException):
-    pass
+class TimeLimitReached(Exception):
+    
+    def __init__(self, total_seconds):
+        super(Exception, self).__init__(self, "Script's time limit was reached after %.2f seconds." % total_seconds)
 
 
 class UnexpectedCharacter(SaulException):
