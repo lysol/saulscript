@@ -69,6 +69,7 @@ class Context(dict):
 
     def wrap_function(self, function, reset_start_time=True):
         def _function(*args):
+            print "args: ", args
             logging.debug("Wrapped Context: " + self.__repr__())
             if reset_start_time:
                 self.reset_start_time()
@@ -78,7 +79,9 @@ class Context(dict):
                     logging.debug("Reducing %s" % arg)
                     _args.append(arg.reduce(self))
                 else:
+                    logging.debug("%s is already reduced, just bind it.", repr(arg))
                     _args.append(arg)
+            print ">>>>_args: ", _args
             return function(*_args)
         return _function
 

@@ -291,11 +291,12 @@ class VariableNode(LiteralNode):
         if self.name in context:
             return context[self.name]
         else:
-            raise NameError("No variable named %s" % self.name)
+            raise exceptions.ObjectResolutionError(self.line_num, "No variable named %s" % self.name)
 
     def __init__(self, line_num, name):
         self.name = name
         super(VariableNode, self).__init__(line_num, name)
+
 
 class BooleanNode(Node):
 
@@ -381,6 +382,7 @@ class FunctionNode(Node):
         context.increment_operations()
 
         def closure(*args):
+            logging.debug("Arguments supplied during closure: %s" % repr(args))
             context.reset_start_time()
             # Copy the function's context so assignments
             # are thrown away when done
@@ -395,6 +397,7 @@ class FunctionNode(Node):
                 # argument list, reduce each of them,
                 # and set the execution context item that
                 # corresponds to this function's signature
+                logging.debug("Examining function argument: %d, %s", index, name_identifier)
                 try:
                     execution_context[name_identifier] = \
                         args[index].reduce(context)
@@ -402,10 +405,14 @@ class FunctionNode(Node):
                     raise exceptions.SaulRuntimeError(self.line_num,
                         "Not enough arguments supplied.")
                 except AttributeError:
+                    logging.debug("Received AttributeError, which means the value is a Python value. (%s)", name_identifier)
+                    logging.debug("repr of the value: %s", repr(args[index]))
                     execution_context[name_identifier] = args[index]
             # execute the branch
+            logging.debug("Execution context after argument binding: %s", repr(execution_context))
             return_node = self.branch.execute(execution_context)
             # add the result here
+            logging.debug("Function executed. Result: %s\nIncrementing operations", return_node)
             context.increment_operations(execution_context.operations_counted)
             return return_node
         logging.debug("Returning closure")
@@ -460,7 +467,7 @@ class InvocationNode(Node):
     def reduce(self, context):
         context.increment_operations()
         if self.callable_name not in context:
-            raise NameError("%s is not defined" % self.callable_name)
+            raise exceptions.SaulRuntimeError("%s is not defined" % self.callable_name)
         callable_item = context[self.callable_name]
         logging.debug("Checking %s to see if it is callable" % callable_item)
         if not callable(callable_item):
