@@ -14,12 +14,13 @@ class Context(dict):
         self.operations_counted = 0
         self.operation_limit = -1
         self.time_limit = -1
-        self.reset_start_time()
+        self.reset_instrumentation()
         super(Context, self).__init__(self, *args, **kwargs)
 
-    def reset_start_time(self):
+    def reset_instrumentation(self):
         logging.debug("Resetting start time")
         self.start_time = datetime.datetime.now()
+        self.operations_counted = 0
 
     def set_op_limit(self, num):
         self.operation_limit = num
@@ -58,7 +59,7 @@ class Context(dict):
         self[name] = val
 
     def execute(self, src, op_limit=-1, time_limit=-1):
-        self.reset_start_time()
+        self.reset_instrumentation()
         new_lexer = Lexer(src)
         tokens = new_lexer.run()
         logging.debug("%s", tokens)

@@ -385,7 +385,7 @@ class FunctionNode(Node):
 
         def closure(*args):
             logging.debug("Arguments supplied during closure: %s" % repr(args))
-            context.reset_start_time()
+            context.reset_instrumentation()
             # Copy the function's context so assignments
             # are thrown away when done
             execution_context = self.context_class()
@@ -473,7 +473,7 @@ class InvocationNode(Node):
             self.line_num)
         context.increment_operations()
         if self.callable_name not in context:
-            raise exceptions.SaulRuntimeError("%s is not defined" % self.callable_name)
+            raise exceptions.SaulRuntimeError(self.line_num, "%s is not defined" % self.callable_name)
         callable_item = context[self.callable_name]
         logging.debug("Checking %s to see if it is callable" % callable_item)
         if not callable(callable_item):
