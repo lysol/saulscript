@@ -52,6 +52,7 @@ class Branch(list):
     def execute(self, context):
         for node in self:
             try:
+                logging.debug("Executing branch with context: %s" % context)
                 node.reduce(context)
             except exceptions.ReturnRequestedException:
                 break
@@ -325,7 +326,8 @@ class SubscriptNotationNode(BinaryOpNode):
 class DotNotationNode(BinaryOpNode):
 
     def reduce(self, context):
-        logging.debug("Context: ", context)
+        logging.debug("context type: %s", type(context))
+        logging.debug("Context: %s", context)
         context.increment_operations()
         logging.debug("Resolving dot notation")
         dictthing = self.left.reduce(context)
@@ -465,6 +467,10 @@ class InvocationNode(Node):
         super(InvocationNode, self).__init__(line_num)
 
     def reduce(self, context):
+        logging.debug("*** Invoking invocation %s(%s) at line %d",
+            repr(self.callable_name),
+            repr(self.arg_list),
+            self.line_num)
         context.increment_operations()
         if self.callable_name not in context:
             raise exceptions.SaulRuntimeError("%s is not defined" % self.callable_name)
@@ -473,7 +479,8 @@ class InvocationNode(Node):
         if not callable(callable_item):
             raise exceptions.SaulRuntimeError(self.line_num, "%s is not callable" %
                                               callable_item)
-        return callable_item(*self.arg_list)
+        args = [arg.reduce(context) for arg in self.arg_list]
+        return callable_item(*args)
 
     def __repr__(self):
         arglist = ", ".join([repr(a) for a in self.arg_list])

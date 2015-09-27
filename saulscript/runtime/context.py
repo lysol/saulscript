@@ -67,23 +67,5 @@ class Context(dict):
         st.execute(self, op_limit=op_limit, time_limit=time_limit)
         return True
 
-    def wrap_function(self, function, reset_start_time=True):
-        def _function(*args):
-            print "args: ", args
-            logging.debug("Wrapped Context: " + self.__repr__())
-            if reset_start_time:
-                self.reset_start_time()
-            _args = []
-            for arg in args:
-                if hasattr(arg, 'reduce'):
-                    logging.debug("Reducing %s" % arg)
-                    _args.append(arg.reduce(self))
-                else:
-                    logging.debug("%s is already reduced, just bind it.", repr(arg))
-                    _args.append(arg)
-            print ">>>>_args: ", _args
-            return function(*_args)
-        return _function
-
     def __repr__(self):
         return '{%s}' % ', '.join(["%s: %s" % (k, v) for k, v in self.iteritems()])
