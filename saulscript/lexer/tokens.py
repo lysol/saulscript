@@ -123,7 +123,7 @@ class StringLiteralToken(LiteralToken):
         return '"%s"' % (self.body.replace('"', '\\"'))
 
     def __str__(self):
-        return "<StringLiteralToken: %s>" % self.body
+        return "<StringLiteralToken(%s): %s>" % (self.delimiter, self.body)
 
 
 class AssignmentOperatorToken(BinaryOperatorToken):

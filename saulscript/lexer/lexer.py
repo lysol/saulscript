@@ -85,7 +85,7 @@ class Lexer(object):
                     continue
                 elif char in "'\"":
                     self.current_token = tokens.StringLiteralToken(
-                        self.line_num, '')
+                        self.line_num, '', delimiter=char)
                 elif char in string.digits or char == '.' and \
                         self.next_char in string.digits:
                     self.current_token = tokens.NumberLiteralToken(

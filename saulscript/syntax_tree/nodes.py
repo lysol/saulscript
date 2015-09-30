@@ -175,7 +175,9 @@ class BinaryOpNode(Node):
             "Please define the operation of this operator")
 
     def __repr__(self):
-        return "<%s %s %s>" % (repr(self.left), 'binary-op', repr(self.right))
+        short_class = str(self.__class__).split('.')[-1]
+        short_class = short_class[:-2]
+        return "<%s (bin-op class: %s) %s>" % (repr(self.left), short_class, repr(self.right))
 
 
 class AdditionNode(BinaryOpNode):
@@ -214,16 +216,27 @@ class AssignmentNode(BinaryOpNode):
     def reduce(self, context):
         context.increment_operations()
         logging.debug("AssignmentNode: I am a %s" % self)
-        logging.debug("AssignmentNode: %s %s", self.left, self.right)
+        logging.debug("AssignmentNode: Left: %s Right: %s", self.left, self.right)
         result = self.right.reduce(context)
         logging.debug("Assignment result: %s" % result)
         if not isinstance(self.left, SubscriptNotationNode):
+            logging.debug("Left is not a subscript, assign the left name in context the result")
             context[self.left.name] = result
         else:
+            logging.debug("Dict member doesn't exist yet, so set it")
             # This dict member doesn't exist yet, set it.
             subscript = self.left
+            index = subscript.right.reduce(context)
             # context[object.name][stuff in []] = our right result
-            context[subscript.left.name][subscript.right.value] = result
+            try:
+                logging.debug("Attempting to set context[%s][%s] = result",
+                              subscript.left, index)
+                logging.debug("Right value is %s", subscript.right.value)
+                context[subscript.left.name][index] = result
+            except KeyError:
+                logging.error("Could not find the variable")
+                # make this more specific later TODO
+                raise exceptions.SaulRuntimeError("Unknown variable")
 
 
 class ComparisonNode(BinaryOpNode):
@@ -284,6 +297,9 @@ class StringNode(LiteralNode):
         context.increment_operations()
         return self.value
 
+    def __repr__(self):
+        return '{string: %s}' % self.value
+
 
 class VariableNode(LiteralNode):
 
@@ -298,6 +314,9 @@ class VariableNode(LiteralNode):
         self.name = name
         super(VariableNode, self).__init__(line_num, name)
 
+    def __repr__(self):
+        return '{variable: %s}' % self.value
+
 
 class BooleanNode(Node):
 
@@ -308,19 +327,23 @@ class BooleanNode(Node):
     def reduce(self, context):
         return bool(self.value)
 
+    def __repr__(self):
+        return '{bool: %s}' % self.value
+
 
 class SubscriptNotationNode(BinaryOpNode):
 
     def reduce(self, context):
         context.increment_operations()
         logging.debug("Reducing subscript notation")
-        if not isinstance(self.left, DictionaryNode) and \
-                not isinstance(self.left, ListNode):
+        left = self.left.reduce(context)
+        if not isinstance(left, dict) and \
+                not isinstance(left, list):
             raise exceptions.SaulRuntimeError(self.line_num,
                 "Subscript notation must be used with a "
                 "list or dictionary (Got %s)" % self.left.__class__)
         index = self.right.reduce(context)
-        return self.left.reduce(context)[index]
+        return left[index]
 
 
 class DotNotationNode(BinaryOpNode):
