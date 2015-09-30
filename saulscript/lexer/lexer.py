@@ -199,3 +199,8 @@ class Lexer(object):
                 else:
                     self.push_token()
                     self.back_up()
+
+        # End it all
+        if not isinstance(self.tokens[-1], tokens.LineTerminatorToken):
+            self.line_num += 1
+            self.tokens.append(tokens.LineTerminatorToken(self.line_num))

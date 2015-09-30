@@ -331,13 +331,18 @@ class DotNotationNode(BinaryOpNode):
         context.increment_operations()
         logging.debug("Resolving dot notation")
         dictthing = self.left.reduce(context)
+        logging.debug("Dot notation left side: %s", dictthing)
         if type(dictthing) != dict:
             raise exceptions.SaulRuntimeError(self.line_num,
                 "Dot notation used with non-dictionary: %s" %
                 dictthing)
         try:
+            logging.debug("Returning %s", dictthing[self.right.name])
             return dictthing[self.right.name]
         except KeyError:
+            logging.error(
+                "Returning error because the right side reference %s was not found",
+                self.right.name)
             raise exceptions.SaulRuntimeError(self.line_num,
                                               "No key named %s in %s" %
                                               (self.right.name, dictthing))
