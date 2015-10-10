@@ -7,6 +7,7 @@ class SaulException(Exception):
     def __init__(self, line_num, *args, **kwargs):
         self.line_num = line_num
         super(SaulException, self).__init__(self, *args, **kwargs)
+        self.message = args[0]
 
 
 class ParseError(SaulException):

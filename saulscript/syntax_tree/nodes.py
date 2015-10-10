@@ -236,7 +236,7 @@ class AssignmentNode(BinaryOpNode):
             except KeyError:
                 logging.error("Could not find the variable")
                 # make this more specific later TODO
-                raise exceptions.SaulRuntimeError("Unknown variable")
+                raise exceptions.SaulRuntimeError(self.nine_num, "Unknown variable")
 
 
 class ComparisonNode(BinaryOpNode):
@@ -501,6 +501,7 @@ class InvocationNode(Node):
             self.line_num)
         context.increment_operations()
         if self.callable_name not in context:
+            logging.error('No function named ' + self.callable_name)
             raise exceptions.SaulRuntimeError(self.line_num, "%s is not defined" % self.callable_name)
         callable_item = context[self.callable_name]
         logging.debug("Checking %s to see if it is callable" % callable_item)
@@ -508,7 +509,10 @@ class InvocationNode(Node):
             raise exceptions.SaulRuntimeError(self.line_num, "%s is not callable" %
                                               callable_item)
         args = [arg.reduce(context) for arg in self.arg_list]
-        return callable_item(*args)
+        try:
+            return callable_item(*args)
+        except TypeError:
+            raise exceptions.SaulRuntimeError(self.line_num, "Could not execute function")
 
     def __repr__(self):
         arglist = ", ".join([repr(a) for a in self.arg_list])
