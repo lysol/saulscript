@@ -9,7 +9,11 @@ class SyntaxTree(object):
     def _debug(self, text, *args):
         if type(text) != str:
             text = repr(text)
-        logging.debug(("<Line %d> " % self.line_num) + text, *args)
+        logging.debug(("<Line %d, Token %d> " % (self.line_num, self.token_counter)) + text, *args)
+
+    def _inc_line(self):
+        self.line_num += 1
+        self.token_counter = 0
 
     def execute(self, context, time_limit=-1, op_limit=-1):
         context.set_op_limit(op_limit)
@@ -27,6 +31,7 @@ class SyntaxTree(object):
             raise exceptions.OutOfTokens(self.line_num, 'at next token')
 
     def shift_token(self):
+        self.token_counter += 1
         try:
             token = self.tokens.pop(0)
             self.line_num = token.line_num
@@ -42,6 +47,7 @@ class SyntaxTree(object):
         self.tree = nodes.Branch([])
         self.line_num = 0
         self.context_class = context_class
+        self.token_counter = 0
 
     def is_identifier(self, token, body):
         return isinstance(token, tokens.IdentifierToken) and \
@@ -55,7 +61,8 @@ class SyntaxTree(object):
                 self.tree.append(self.handle_expression())
             except exceptions.OutOfTokens as e:
                 self._debug('*** Out of tokens: %s', e.message)
-                self._debug("Final AST: %s" % self.tree)
+                for line in self.tree:
+                    self._debug("FINAL AST: %s", line)
                 break
             except exceptions.EndContextExecution:
                 logging.error('Unexpected }')
@@ -72,8 +79,10 @@ class SyntaxTree(object):
         while True:
             token = self.shift_token()
             if isinstance(token, tokens.RightParenToken):
+                self._debug("Found right paren, continue with rest of function definition")
                 break  # get rid of it
             if isinstance(token, tokens.CommaToken):
+                self._debug("Found comma, continue to next argument")
                 continue  # eat it
             if not isinstance(token, tokens.IdentifierToken):
                 raise exceptions.ParseError(self.line_num,
@@ -119,10 +128,11 @@ class SyntaxTree(object):
                 break
             arg_tokens.append(self.handle_operator_expression())
             if isinstance(self.next_token, tokens.CommaToken):
+                self._debug("Found comma, continue to next argument")
                 # eat the comma and keep going
                 self.shift_token()
                 continue
-        self._debug("Done reading arguments")
+        self._debug("Done reading arguments in function invocation")
         return nodes.InvocationNode(self.line_num, name_token.body, arg_tokens)
 
     def handle_list_expression(self):
@@ -155,7 +165,7 @@ class SyntaxTree(object):
             name = self.shift_token()
             if isinstance(name, tokens.LineTerminatorToken):
                 # So, we can have whitespace after a {
-                self.line_num += 1
+                self._inc_line()
                 continue
             if isinstance(name, tokens.RightCurlyBraceToken):
                 # done with this dictionary since we got a }
@@ -176,6 +186,7 @@ class SyntaxTree(object):
         return data
 
     def handle_operator_expression(self):
+        self._debug("Handling operator expression.")
         output = []
         op_stack = []
         prev_token = None
@@ -189,9 +200,11 @@ class SyntaxTree(object):
             try:
                 if isinstance(self.next_token,
                               tokens.LeftCurlyBraceToken):
+                    self._debug("Calling handle_dictionary_expression from operator_expression")
                     output.append(self.handle_dictionary_expression())
                 elif isinstance(self.next_token,
                                 tokens.LeftSquareBraceToken):
+                    self._debug("Calling handle_list_expression from operator_expression")
                     output.append(self.handle_list_expression())
                 elif isinstance(self.next_token,
                                 tokens.RightCurlyBraceToken):
@@ -204,13 +217,19 @@ class SyntaxTree(object):
                         "] encountered, stop processing operator expression")
                     break
                 elif isinstance(self.next_token, tokens.LeftParenToken):
+                    self._debug('Incrementing number of parens.')
                     paren_count += 1
                 elif isinstance(self.next_token, tokens.RightParenToken):
                     paren_count -= 1
+                    self._debug("Decrementing number of parens.")
                     if paren_count < 0:
+                        self._debug("Found an unmatched ), which means this is the end of the operator expression")
                         # too many )s found. This is the end of
                         # the operator expression
                         break
+                if isinstance(self.next_token, tokens.RightParenToken):
+                    self._debug("THE RIGHT PAREN IS HERE")
+                self._debug('Parent Count: %d', paren_count)
                 token = self.shift_token()
                 self._debug("Operator context: Consider %s", token)
             except IndexError:
@@ -222,7 +241,7 @@ class SyntaxTree(object):
                 self._debug(
                     'encountered a line terminator, comma, or }, break it out')
                 if isinstance(token, tokens.LineTerminatorToken):
-                    self.line_num += 1
+                    self._inc_line()
                 break
             if (prev_token is None or
                 isinstance(prev_token, tokens.OperatorToken)) and \
@@ -381,7 +400,7 @@ class SyntaxTree(object):
                     return self.handle_operator_expression()
             elif isinstance(token, tokens.LineTerminatorToken):
                 self._debug("Delete this infernal line terminator")
-                self.line_num += 1
+                self._inc_line()
                 self.shift_token()
                 return nodes.NopNode(self.line_num)
             elif isinstance(token, tokens.RightCurlyBraceToken):
