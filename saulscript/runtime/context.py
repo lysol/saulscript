@@ -60,7 +60,7 @@ class Context(dict):
 
     def execute(self, src, op_limit=-1, time_limit=-1):
         self.reset_instrumentation()
-        new_lexer = Lexer(src)
+        new_lexer = Lexer(src + "\n")
         tokens = new_lexer.run()
         logging.debug("%s", tokens)
         st = SyntaxTree(Context, tokens)

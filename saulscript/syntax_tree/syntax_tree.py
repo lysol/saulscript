@@ -2,7 +2,8 @@ import logging
 import nodes
 from .. import exceptions
 from ..lexer import tokens
-
+import traceback
+import sys
 
 class SyntaxTree(object):
 
@@ -31,6 +32,7 @@ class SyntaxTree(object):
             raise exceptions.OutOfTokens(self.line_num, 'at next token')
 
     def shift_token(self):
+        self._debug('Shifting token %s', self.next_token)
         self.token_counter += 1
         try:
             token = self.tokens.pop(0)
@@ -198,32 +200,33 @@ class SyntaxTree(object):
             self._debug("Output stack: %s", output)
             self._debug("Operator stack: %s", op_stack)
             try:
+                self._debug('The next token is %s', self.next_token)
                 if isinstance(self.next_token,
                               tokens.LeftCurlyBraceToken):
-                    self._debug("Calling handle_dictionary_expression from operator_expression")
+                    self._debug(">> Calling handle_dictionary_expression from operator_expression")
                     output.append(self.handle_dictionary_expression())
                 elif isinstance(self.next_token,
                                 tokens.LeftSquareBraceToken):
-                    self._debug("Calling handle_list_expression from operator_expression")
+                    self._debug(">> Calling handle_list_expression from operator_expression")
                     output.append(self.handle_list_expression())
                 elif isinstance(self.next_token,
                                 tokens.RightCurlyBraceToken):
                     self._debug(
-                        "} encountered, stop processing operator expression")
+                        ">> } encountered, stop processing operator expression")
                     break
                 elif isinstance(self.next_token,
                                 tokens.RightSquareBraceToken):
                     self._debug(
-                        "] encountered, stop processing operator expression")
+                        ">> ] encountered, stop processing operator expression")
                     break
-                elif isinstance(self.next_token, tokens.LeftParenToken):
+                if isinstance(self.next_token, tokens.LeftParenToken):
                     self._debug('Incrementing number of parens.')
                     paren_count += 1
-                elif isinstance(self.next_token, tokens.RightParenToken):
+                if isinstance(self.next_token, tokens.RightParenToken):
                     paren_count -= 1
-                    self._debug("Decrementing number of parens.")
-                    if paren_count < 0:
-                        self._debug("Found an unmatched ), which means this is the end of the operator expression")
+                    self._debug(">> Decrementing number of parens.")
+                    if paren_count < 1:
+                        self._debug(">> Found an unmatched ), which means this is the end of the operator expression")
                         # too many )s found. This is the end of
                         # the operator expression
                         break
@@ -313,6 +316,9 @@ class SyntaxTree(object):
             # hold onto this for the next run in case we need to
             # check for unary operators
             prev_token = token
+
+        self._debug('Done feeding in tokens, now drain the operator stack')
+
         # drain the operator stack
         while len(op_stack) > 0:
             operator = op_stack.pop()
