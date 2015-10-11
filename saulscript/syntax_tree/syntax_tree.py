@@ -124,11 +124,16 @@ class SyntaxTree(object):
         self._debug("Examining arguments")
         while True:
             token = self.next_token
+            self._debug("Current argument set: %s", repr(arg_tokens))
             self._debug("Function Invocation: Consider %s" % token)
             if isinstance(token, tokens.RightParenToken):
                 self.shift_token()
                 break
-            arg_tokens.append(self.handle_operator_expression())
+            arg = self.handle_operator_expression()
+            if arg is None:
+                raise exceptions.ParseError(self.line_num,
+                    "Unexpected character")
+            arg_tokens.append(arg)
             if isinstance(self.next_token, tokens.CommaToken):
                 self._debug("Found comma, continue to next argument")
                 # eat the comma and keep going
@@ -213,11 +218,19 @@ class SyntaxTree(object):
                                 tokens.RightCurlyBraceToken):
                     self._debug(
                         ">> } encountered, stop processing operator expression")
+                    self._debug(
+                        str(paren_count))
+                    if paren_count > 0:
+                        self._debug("Paren count is over 1 while a } has been encountered.")
+                        raise exceptions.ParseError("Unexpected }")
                     break
                 elif isinstance(self.next_token,
                                 tokens.RightSquareBraceToken):
                     self._debug(
                         ">> ] encountered, stop processing operator expression")
+                    if paren_count > 0:
+                        self._debug("Paren count is over 1 while a } has been encountered.")
+                        raise exceptions.ParseError("Unexpected }")                    
                     break
                 if isinstance(self.next_token, tokens.LeftParenToken):
                     self._debug('Incrementing number of parens.')

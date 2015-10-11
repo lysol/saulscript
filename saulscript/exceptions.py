@@ -15,7 +15,9 @@ class ParseError(SaulException):
 
 
 class EndContextExecution(SaulException):
-    pass
+    
+    def __init__(self, line_num):
+        super(EndContextExecution, self).__init__(self, line_num, "End of context reached")
 
 
 class OutOfTokens(SaulException):
